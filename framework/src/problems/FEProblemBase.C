@@ -7121,7 +7121,7 @@ FEProblemBase::computeResidualTags(const std::set<TagID> & tags)
       for (unsigned int tid = 0; tid < n_threads; tid++)
         reinitScalars(tid);
 
-      computeUserObjects(EXEC_LINEAR, Moose::PRE_AUX);
+      computeUserObjects(EXEC_NONLINEAR, Moose::PRE_AUX);
 
       _aux->residualSetup();
 
