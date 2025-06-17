@@ -17,18 +17,18 @@
 #include "Assembly.h"
 #include "CrackFrontDefinition.h"
 #include "EnrichmentFunctionCalculation.h"
-
+#include "EnrichFunctionUtility.h"
 /**
  * ComputeCrackTipEnrichmentSmallStrain calculates the sum of standard strain and enrichement strain
  */
-class ComputeCrackTipEnrichmentSmallStrain : public ComputeStrainBase,
-                                             public EnrichmentFunctionCalculation
+class ComputeCrackTipEnrichmentSmallStrain : public ComputeStrainBase
 {
 public:
   static InputParameters validParams();
 
   ComputeCrackTipEnrichmentSmallStrain(const InputParameters & parameters);
   virtual ~ComputeCrackTipEnrichmentSmallStrain() {}
+  virtual void initialSetup() override final;
 
 protected:
   virtual void computeProperties() override;
@@ -49,6 +49,8 @@ protected:
 
   /// gradient of the shape function
   const VariablePhiGradient & _grad_phi;
+
+  const CrackFrontDefinition * _crack_front_definition;
 
 private:
   /// enrichment function value
