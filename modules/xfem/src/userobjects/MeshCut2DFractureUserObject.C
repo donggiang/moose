@@ -93,13 +93,22 @@ void
 MeshCut2DFractureUserObject::initialize()
 {
   _is_mesh_modified = false;
+
+  // std::cout << "call findActiveBoundaryGrowth1\n";
   findActiveBoundaryGrowth();
+  // std::cout << "call findActiveBoundaryGrowth2\n";
+
   growFront();
+  // std::cout << "MeshCut2DFractureUserObject::initialize(), crack front provider3: "
+  //           << getCrackFrontPoints(1)[0] << "\n";
   addNucleatedCracksToMesh();
   // update _crack_front_definition with nucleated nodes
   _crack_front_definition->updateNumberOfCrackFrontPoints(
       _original_and_current_front_node_ids.size());
   _crack_front_definition->isCutterModified(_is_mesh_modified);
+
+  std::cout << "MeshCut2DFractureUserObject::initialize(): "
+            << *_crack_front_definition->getCrackFrontPoint(0) << "\n";
 }
 
 void
@@ -139,6 +148,8 @@ MeshCut2DFractureUserObject::findActiveBoundaryGrowth()
                _original_and_current_front_node_ids.size());
 
   _active_front_node_growth_vectors.clear();
+  std::cout << "MeshCut2DFractureUserObject::findActiveBoundaryGrowth, front node size: "
+            << _original_and_current_front_node_ids.size() << "\n";
   for (unsigned int i = 0; i < _original_and_current_front_node_ids.size(); ++i)
   {
     if (_use_k)

@@ -593,6 +593,7 @@ InteractionIntegralTempl<is_ad>::finalize()
           _poissons_ratio * _crack_front_definition->getCrackFrontTangentialStrain(i);
 
     _interaction_integral[i] *= _K_factor;
+    std::cout << "InteractionIntegral: " << _interaction_integral[i] << "\n";
   }
 }
 

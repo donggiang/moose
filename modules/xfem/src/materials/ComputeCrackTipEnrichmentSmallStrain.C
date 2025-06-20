@@ -78,6 +78,8 @@ ComputeCrackTipEnrichmentSmallStrain::initialSetup()
 void
 ComputeCrackTipEnrichmentSmallStrain::computeQpProperties()
 {
+  std::cout << "ComputeCrackTipEnrichmentSmallStrain::computeQpProperties: "
+            << *_crack_front_definition->getCrackFrontPoint(0) << "\n";
   EnrichFunctionUtility::crackTipEnrichementFunctionAtPoint(
       _crack_front_definition, _q_point[_qp], _B);
   unsigned int crack_front_point_index =

@@ -10,4 +10,4 @@
 #include "XFEMAppTypes.h"
 #include "ExecFlagRegistry.h"
 
-const ExecFlagType EXEC_XFEM_MARK = registerDefaultExecFlag("XFEM_MARK");
+// const ExecFlagType EXEC_XFEM_MARK = registerDefaultExecFlag("XFEM_MARK");

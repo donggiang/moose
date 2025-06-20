@@ -375,7 +375,8 @@ DomainIntegralAction::act()
       // TODO the xfem_flags should be something like this:
       // xfem_exec_flags = {item, EXEC_NONLINEAR, EXEC_TIMESTEP_END};
       // but the item=XFEM_MARK flag causes xfem tests to diverge
-      xfem_exec_flags = {EXEC_INITIAL, EXEC_NONLINEAR, EXEC_TIMESTEP_END};
+      // probably remove exec_initial
+      xfem_exec_flags = {EXEC_INITIAL, EXEC_XFEM_MARK, EXEC_TIMESTEP_END};
     }
   }
 
@@ -876,6 +877,8 @@ DomainIntegralAction::act()
               kii_name + "2DVPP_" + Moose::stringify(_ring_vec[ring_index]);
           params.set<VectorPostprocessorName>("KIII_vectorpostprocessor") =
               kiii_name + "2DVPP_" + Moose::stringify(_ring_vec[ring_index]);
+          std::cout
+              << "DomainInteralAction,_treat_as_2d && _use_crack_front_points_provider == false\n ";
         }
         else
         {
@@ -885,6 +888,7 @@ DomainIntegralAction::act()
               kii_name + Moose::stringify(_ring_vec[ring_index]);
           params.set<VectorPostprocessorName>("KIII_vectorpostprocessor") =
               kiii_name + Moose::stringify(_ring_vec[ring_index]);
+          std::cout << "DomainInteralAction,_treat_as_2d && else \n ";
         }
         params.set<std::string>("KI_vector_name") =
             ki_name + Moose::stringify(_ring_vec[ring_index]);

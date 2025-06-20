@@ -41,8 +41,6 @@ MeshCut2DUserObjectBase::MeshCut2DUserObjectBase(const InputParameters & paramet
                      : nullptr),
     _is_mesh_modified(false)
 {
-  _depend_uo.insert(getParam<UserObjectName>("crack_front_definition"));
-
   // only the Exodus type is currently supported
   MeshFileName cutterMeshFileName = getParam<MeshFileName>("mesh_file");
   _cutter_mesh = std::make_unique<ReplicatedMesh>(_communicator);
@@ -304,7 +302,7 @@ MeshCut2DUserObjectBase::pointOnEdgeBoundary(const Point & point, Real tolerance
 {
   for (const auto & bnd_elem : as_range(_mesh.bndElemsBegin(), _mesh.bndElemsEnd()))
   {
-    if (bnd_elem->_elem->processor_id() == processor_id())
+    // if (bnd_elem->_elem->processor_id() == processor_id())
     {
       auto side = bnd_elem->_elem->side_ptr(bnd_elem->_side);
 

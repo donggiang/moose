@@ -29,6 +29,7 @@ const ExecFlagType EXEC_INITIAL = registerDefaultExecFlag("INITIAL");
 const ExecFlagType EXEC_LINEAR = registerDefaultExecFlag("LINEAR");
 const ExecFlagType EXEC_NONLINEAR_CONVERGENCE = registerDefaultExecFlag("NONLINEAR_CONVERGENCE");
 const ExecFlagType EXEC_NONLINEAR = registerDefaultExecFlag("NONLINEAR");
+const ExecFlagType EXEC_XFEM_MARK = registerDefaultExecFlag("XFEM_MARK");
 const ExecFlagType EXEC_POSTCHECK = registerDefaultExecFlag("POSTCHECK");
 const ExecFlagType EXEC_TIMESTEP_END = registerDefaultExecFlag("TIMESTEP_END");
 const ExecFlagType EXEC_TIMESTEP_BEGIN = registerDefaultExecFlag("TIMESTEP_BEGIN");
