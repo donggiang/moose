@@ -7,19 +7,19 @@
 //* Licensed under LGPL 2.1, please see LICENSE for details
 //* https://www.gnu.org/licenses/lgpl-2.1.html
 
-#include "ComputeCrackTipEnrichmentSmallStrain.h"
+#include "ADComputeCrackTipEnrichmentSmallStrain.h"
 #include "MooseMesh.h"
 #include "libmesh/fe_interface.h"
 #include "libmesh/string_to_enum.h"
 
 #include "libmesh/quadrature_gauss.h"
 
-registerMooseObject("XFEMApp", ComputeCrackTipEnrichmentSmallStrain);
+registerMooseObject("XFEMApp", ADComputeCrackTipEnrichmentSmallStrain);
 
 InputParameters
-ComputeCrackTipEnrichmentSmallStrain::validParams()
+ADComputeCrackTipEnrichmentSmallStrain::validParams()
 {
-  InputParameters params = ComputeStrainBase::validParams();
+  InputParameters params = ADComputeStrainBase::validParams();
   params.addClassDescription(
       "Computes the crack tip enrichment at a point within a small strain formulation.");
   params.addRequiredParam<std::vector<NonlinearVariableName>>("enrichment_displacements",
@@ -29,12 +29,13 @@ ComputeCrackTipEnrichmentSmallStrain::validParams()
   return params;
 }
 
-ComputeCrackTipEnrichmentSmallStrain::ComputeCrackTipEnrichmentSmallStrain(
+ADComputeCrackTipEnrichmentSmallStrain::ADComputeCrackTipEnrichmentSmallStrain(
     const InputParameters & parameters)
-  : ComputeStrainBase(parameters),
+  : ADComputeStrainBase(parameters),
     _enrich_disp(3),
     _grad_enrich_disp(3),
     _enrich_variable(4),
+    _soln_vector_en(32, 1),
     _phi(_assembly.phi()),
     _grad_phi(_assembly.gradPhi()),
     _crack_front_definition(nullptr),
@@ -69,17 +70,17 @@ ComputeCrackTipEnrichmentSmallStrain::ComputeCrackTipEnrichmentSmallStrain(
 }
 
 void
-ComputeCrackTipEnrichmentSmallStrain::initialSetup()
+ADComputeCrackTipEnrichmentSmallStrain::initialSetup()
 {
   const auto uo_name = getParam<UserObjectName>("crack_front_definition");
   _crack_front_definition = &_fe_problem.getUserObject<CrackFrontDefinition>(uo_name);
 }
 
 void
-ComputeCrackTipEnrichmentSmallStrain::computeQpProperties()
+ADComputeCrackTipEnrichmentSmallStrain::computeQpProperties()
 {
-  // std::cout << "ComputeCrackTipEnrichmentSmallStrain::computeQpProperties: "
-  //         << *_crack_front_definition->getCrackFrontPoint(0) << "\n";
+  // std::cout << "ADComputeCrackTipEnrichmentSmallStrain::computeQpProperties()\n";
+
   EnrichFunctionUtility::crackTipEnrichementFunctionAtPoint(
       _crack_front_definition, _q_point[_qp], _B);
   unsigned int crack_front_point_index =
@@ -91,7 +92,7 @@ ComputeCrackTipEnrichmentSmallStrain::computeQpProperties()
         _crack_front_definition, _dBx[i], _dBX[i], crack_front_point_index);
 
   _sln = _nl->currentSolution();
-
+  _soln_vector_en.zero();
   for (unsigned int m = 0; m < _ndisp; ++m)
   {
     _enrich_disp[m] = 0.0;
@@ -102,7 +103,11 @@ ComputeCrackTipEnrichmentSmallStrain::computeQpProperties()
       for (unsigned int j = 0; j < 4; ++j)
       {
         dof_id_type dof = node_i->dof_number(_nl->number(), _enrich_variable[j][m]->number(), 0);
-        Real soln = (*_sln)(dof);
+        ADReal soln = (*_sln)(dof);
+
+        if (ADReal::do_derivatives)
+          Moose::derivInsert(soln.derivatives(), dof, 1.);
+
         _enrich_disp[m] += (*_fe_phi)[i][_qp] * (_B[j] - _BI[i][j]) * soln;
         RealVectorValue grad_B(_dBX[j]);
         _grad_enrich_disp[m] +=
@@ -111,27 +116,27 @@ ComputeCrackTipEnrichmentSmallStrain::computeQpProperties()
     }
   }
 
-  auto grad_tensor_enrich = RankTwoTensor::initializeFromRows(
+  auto grad_tensor_enrich = ADRankTwoTensor::initializeSymmetric(
       _grad_enrich_disp[0], _grad_enrich_disp[1], _grad_enrich_disp[2]);
 
-  RankTwoTensor enrich_strain = (grad_tensor_enrich + grad_tensor_enrich.transpose()) / 2.0;
-
-  auto grad_tensor = RankTwoTensor::initializeFromRows(
+  auto grad_tensor = ADRankTwoTensor::initializeSymmetric(
       (*_grad_disp[0])[_qp], (*_grad_disp[1])[_qp], (*_grad_disp[2])[_qp]);
 
-  _total_strain[_qp] = (grad_tensor + grad_tensor.transpose()) / 2.0;
+  _total_strain[_qp] = grad_tensor;
 
-  _total_strain[_qp] += enrich_strain;
+  _total_strain[_qp] += grad_tensor_enrich;
 
   _mechanical_strain[_qp] = _total_strain[_qp];
 
   // Remove the Eigen strain
   for (auto es : _eigenstrains)
     _mechanical_strain[_qp] -= (*es)[_qp];
+
+  // std::cout << "ADComputeCrackTipEnrichmentSmallStrain::computeQpProperties\n";
 }
 
 void
-ComputeCrackTipEnrichmentSmallStrain::computeProperties()
+ADComputeCrackTipEnrichmentSmallStrain::computeProperties()
 {
   FEType fe_type(Utility::string_to_enum<Order>("first"),
                  Utility::string_to_enum<FEFamily>("lagrange"));
@@ -150,5 +155,5 @@ ComputeCrackTipEnrichmentSmallStrain::computeProperties()
     EnrichFunctionUtility::crackTipEnrichementFunctionAtPoint(
         _crack_front_definition, *(_current_elem->node_ptr(i)), _BI[i]);
 
-  ComputeStrainBase::computeProperties();
+  ADComputeStrainBase::computeProperties();
 }

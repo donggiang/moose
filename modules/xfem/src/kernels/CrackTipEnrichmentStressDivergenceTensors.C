@@ -85,6 +85,13 @@ CrackTipEnrichmentStressDivergenceTensors::computeQpResidual()
 
   RealVectorValue grad_B(_dBX[_enrichment_component]);
 
+  // std::cout << "element_id: " << _current_elem->id() << ", "
+  //           << _stress[_qp].row(_component) *
+  //                  (_grad_test[_i][_qp] * (_B[_enrichment_component] -
+  //                  _BI[_enrichment_component]) +
+  //                   _test[_i][_qp] * grad_B)
+  //           << "\n";
+
   return _stress[_qp].row(_component) *
          (_grad_test[_i][_qp] * (_B[_enrichment_component] - _BI[_enrichment_component]) +
           _test[_i][_qp] * grad_B);

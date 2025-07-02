@@ -77,11 +77,12 @@ template <typename R2>
 ADReal
 ADStressDivergenceTensorsTempl<R2>::computeQpResidual()
 {
-  ADReal residual = _stress[_qp].row(_component) * _grad_test[_i][_qp];
+  ADReal residual = _stress[_qp].row(_component) * MetaPhysicL::raw_value(_grad_test[_i][_qp]);
 
   // volumetric locking correction
   if (_volumetric_locking_correction)
-    residual += (_avg_grad_test[_i] - _grad_test[_i][_qp](_component)) / 3.0 * _stress[_qp].trace();
+    residual += MetaPhysicL::raw_value(_avg_grad_test[_i] - _grad_test[_i][_qp](_component)) / 3.0 *
+                _stress[_qp].trace();
 
   if (_ndisp != 3 && _out_of_plane_strain_coupled && _use_displaced_mesh)
   {
