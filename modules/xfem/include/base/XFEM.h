@@ -471,6 +471,8 @@ private:
    */
   std::vector<dof_id_type> getNodeSolutionDofs(const Node * node, SystemBase & sys) const;
 
+  std::vector<dof_id_type> getNodeSolutionDofs(const Node & node, SystemBase & sys) const;
+
   /**
    * Get the GeometricCutUserObject associated with an element
    * @param elem The element

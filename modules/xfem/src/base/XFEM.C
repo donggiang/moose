@@ -265,18 +265,14 @@ XFEM::update(Real time,
     mooseError("Use of XFEM with distributed mesh is not yet supported");
 
   bool mesh_changed = false;
-  std::cout << "XFEM::update(), debug 0 *****************\n";
 
   buildEFAMesh();
-  std::cout << "XFEM::update(), debug 1 *****************\n";
 
   _fe_problem->execute(EXEC_XFEM_MARK);
-  std::cout << "XFEM::update(), debug 2 *****************\n";
   storeCrackTipOriginAndDirection();
 
   if (markCuts(time))
     mesh_changed = cutMeshWithEFA(nl, aux);
-  std::cout << "XFEM::update(), debug 3 *****************\n";
 
   if (mesh_changed)
   {
