@@ -9,13 +9,15 @@ def compute_crack_length(c, n, B, time):
             dt = time[i] - time[i-1]
         else:
             dt = time[i]
+
         if B[i]>0:
            #print('c value: ')
            #print (B[i])
            #if i==0:
             #B[i] = B[i]/4
-           if(i==0):
-            B[i] = B[i]/100000
+          # if(i==0):
+           # B[i] = B[i]/100000
+
            increment = c * pow(B[i], n) * dt
 
         else:
@@ -31,40 +33,36 @@ def compute_crack_length(c, n, B, time):
     return length
 
 
+
 plt.figure(figsize=(10,6))
 
 y_columns = ['C_1_1']
 
 
-c= 0.6e-2
-e =0.9 #1.1 #0.87 #0.867#factor/(factor+1)
-############
-# csv_path = 'CCG_en_cr_cl_h0p2_dt2_rd0p59_ri2_ro6p5_0p18em3_e1p35_c6em24_n6p8.csv'
-# # read csv file
-# df3 = pd.read_csv(csv_path)
-# x3= df3['time']#
-# for y_col in y_columns:
-#     plt.plot(x3, df3[y_col], linestyle='-',marker='o', linewidth=3, label=f'h=0.2', color='r')
+c= 0.3e-3
+e =1.1 #1.1 #0.87 #0.867#factor/(factor+1)
 
-
-# csv_path = 'CCG_en_cr_cl_h0p16_dt2_rd0p59_ri2_ro6p5_0p18em3_e1p35_c6em24_n6p8.csv'
-# # read csv file
-# df2 = pd.read_csv(csv_path)
-# x2= df2['time']#
-# for y_col in y_columns:
-#     plt.plot(x2, df2[y_col], linestyle='-',marker='o', linewidth=3, label=f'h=0.16', color='g')
-
-# csv_path = 'CCG_en_cr_cl_h0p125_dt5_rd0p59_ri2_ro6p5_0p18em3_e1p35_c6em24_n6p8.csv'
-# # read csv file
-# df = pd.read_csv(csv_path)
-# x= df['time']#
-# for y_col in y_columns:
-#     plt.plot(x, df[y_col], linestyle='-',marker='o', linewidth=3, label=f'h=0.125', color='b')
 ############
 # #########
-csv_path = 'CCG_en_cr_cl_h0p5_d0p1_m0p7_n0p9_c5em24_e6p3.csv'
+csv_path = 'nonAD_CCG_en_cr_cl_h0p25_d0p8_m0p3em3_n1p1_c2p5em23_e6p7.csv'
 # read csv file
 df4 = pd.read_csv(csv_path)
+
+# Loop over each row, starting from the second row
+for i in range(1, len(df4["C_1_1"])):
+    current_value = df4["C_1_1"][i]
+    previous_value = df4["C_1_1"][i-1]
+
+    if i>0:
+        # Check if current value is 10 times greater than the previous value or negative
+        if current_value > 8 * previous_value or current_value < 0:
+            # Modify the current value as needed
+            # For example, set it to the previous value or some other logic
+            df4["C_1_1"][i] = previous_value
+
+
+
+
 x4= df4['time']#
 for y_col in y_columns:
     plt.plot(x4, df4[y_col], linestyle='-',marker='none', linewidth=4, label=f'h=0.16', color='purple')
@@ -77,7 +75,7 @@ plt.xlabel('Time', fontsize=14)
 plt.ylabel('C(t)', fontsize=14)
 plt.legend(fontsize=14, frameon=False)
 #plt.xlim(0, 140)
-plt.ylim(-5, 5)
+#plt.ylim(-5, 5)
 #tick customization
 # Customize the outer frame (spines)
 ax = plt.gca()  # Get current axis

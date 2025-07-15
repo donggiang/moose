@@ -137,7 +137,7 @@
  [dt_func]
     type = PiecewiseLinear
     x = '0.    1e20'
-    y = '0.1  0.1'
+    y = '0.01 0.01'
   [../]
 []
 
@@ -204,8 +204,8 @@
   [../]
   [./powerlawcrp]
     type = ADPowerLawCreepStressUpdate
-    coefficient =5e-24#2e-23 #
-    n_exponent =6.3#6.25## 5.4
+    coefficient =3e-24#2e-23 #
+    n_exponent =6.8#6.25## 5.4
     m_exponent = 0.0
     activation_energy = 0.0
    #relative_tolerance=1e-6
@@ -216,12 +216,12 @@
   [cut_mesh2]
     type = MeshCut2DCCGUserObject
     mesh_file = initialcrack14p86.e
-    growth_increment = 0.0001
+    growth_increment = 0.0000
     ki_vectorpostprocessor = "II_KI_1"
     kii_vectorpostprocessor = "II_KII_1"
     c_vectorpostprocessor="C_1"
-    paris_coeff =0.6e-2 #1.5e-3#
-    paris_exponent =0.9#### 1.03#1.25
+    paris_coeff =0.1e-2 #1.5e-3#
+    paris_exponent =1.1#### 1.03#1.25
   []
 []
 
@@ -291,7 +291,7 @@
 
 [Outputs] ###dt3_0p225.
 
-  file_base = CCG_en_cr_cl_h0p5_d0p1_m0p7_n0p9_c5em24_e6p3
+  file_base = CCG_en_cr_cl_h0p5_d0p01_m0p1_n0p95_c3em24_e6p8
   exodus = true
   csv = true
   execute_on = timestep_end
