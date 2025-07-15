@@ -119,9 +119,9 @@ MeshCut2DCCGUserObject::findActiveBoundaryGrowth()
       // if(std::abs(ci) <= 1.0e9)
       //   growth_increment = (0.43323*ci - 0.0012762)*_dt*1000.0;
 
-      if (std::abs(ci) <= 1.0e9 && _t > _dt)
-        growth_increment =
-            std::max(_paris_coeff * std::pow(ci, _paris_exponent) * _dt, _growth_increment);
+      // if (std::abs(ci) <= 1.0e9 && _t > _dt)
+      growth_increment =
+          std::max(_paris_coeff * std::pow(ci, _paris_exponent) * _dt, _growth_increment);
 
       _total_crack_length += growth_increment;
       std::cout << "growth_increment: " << growth_increment << "\n";
