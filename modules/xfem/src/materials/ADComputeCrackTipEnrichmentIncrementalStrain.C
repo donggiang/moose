@@ -129,65 +129,50 @@ ADComputeCrackTipEnrichmentIncrementalStrain::computeProperties()
     unsigned int crack_front_point_index =
         EnrichFunctionUtility::crackTipEnrichementFunctionDerivativeAtPoint(
             _crack_front_definition, _q_point[_qp], _dBx);
-    // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug3\n";
 
     for (unsigned int i = 0; i < 4; ++i)
       EnrichFunctionUtility::rotateFromCrackFrontCoordsToGlobal(
           _crack_front_definition, _dBx[i], _dBX[i], crack_front_point_index);
-    // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug3.0\n";
 
     for (unsigned int m = 0; m < _ndisp; ++m)
     {
       _enrich_disp[m] = 0.0;
       _grad_enrich_disp[m].zero();
-      // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug3.00\n";
 
       _grad_enrich_disp_old[m].zero();
-      // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug3.000\n";
 
       for (unsigned int i = 0; i < _current_elem->n_nodes(); ++i)
       {
-        // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug3.000\n";
 
         const Node * node_i = _current_elem->node_ptr(i);
-        // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug3.0000\n";
 
         for (unsigned int j = 0; j < 4; ++j)
         {
-          // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug3.1\n";
 
           dof_id_type dof = node_i->dof_number(_nl->number(), _enrich_variable[j][m]->number(), 0);
           ADReal soln = (*_sln)(dof);
           Real soln_old = _nl->solutionOld()(dof);
-          // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug3.2\n";
 
           if (ADReal::do_derivatives)
             Moose::derivInsert(soln.derivatives(), dof, 1.);
-          // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug3.3\n";
 
           _enrich_disp[m] += (*_fe_phi)[i][_qp] * (_B[j] - _BI[i][j]) * soln;
           RealVectorValue grad_B(_dBX[j]);
-          // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug3.4\n";
 
           _grad_enrich_disp[m] +=
               ((*_fe_dphi)[i][_qp] * (_B[j] - _BI[i][j]) + (*_fe_phi)[i][_qp] * grad_B) * soln;
-          // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug3.5\n";
 
           _grad_enrich_disp_old[m] +=
               ((*_fe_dphi)[i][_qp] * (_B[j] - _BI[i][j]) + (*_fe_phi)[i][_qp] * grad_B) * soln_old;
         }
       }
     }
-    // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug4\n";
 
     _grad_enrich_disp_tensor[_qp] = ADRankTwoTensor::initializeFromRows(
         _grad_enrich_disp[0], _grad_enrich_disp[1], _grad_enrich_disp[2]);
-    // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug4.1\n";
 
     RankTwoTensor grad_enrich_disp_tensor_old = RankTwoTensor::initializeFromRows(
         _grad_enrich_disp_old[0], _grad_enrich_disp_old[1], _grad_enrich_disp_old[2]);
-
-    // std::cout << "ADComputeCrackTipEnrichmentIncrementalStrain, debug4.2\n";
 
     /////  standard strain part
     // Deformation gradient

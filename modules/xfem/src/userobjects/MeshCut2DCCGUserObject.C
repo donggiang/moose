@@ -107,10 +107,10 @@ MeshCut2DCCGUserObject::findActiveBoundaryGrowth()
       Real growth_increment = _growth_increment;
       //  std::cout<< "ci_old: " << ci_old << "\n";
       //  std::cout<< "ci: " << ci << "\n";
-      //  if(ci_old > 0.0)
-      //      ci = ci_old;
+      if (ci_old > 0.0 && (ci > 10.0 * ci_old || ci < 0.0))
+        ci = ci_old;
 
-      //   ci_old = ci;
+      ci_old = ci;
 
       std::cout << "----update ci_old: " << ci_old << "\n";
       std::cout << "----update ci: " << ci << "\n";
