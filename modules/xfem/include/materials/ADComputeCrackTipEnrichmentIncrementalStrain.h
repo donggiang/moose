@@ -16,7 +16,6 @@
 #include "ADComputeIncrementalStrainBase.h"
 #include "Assembly.h"
 #include "CrackFrontDefinition.h"
-#include "EnrichmentFunctionCalculation.h"
 #include "EnrichFunctionUtility.h"
 #include "NonlinearSystem.h"
 /**
