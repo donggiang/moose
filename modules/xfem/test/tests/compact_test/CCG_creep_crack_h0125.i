@@ -8,13 +8,13 @@
   #qrule = volfrac
   qrule = moment_fitting
   output_cut_plane = true
-  use_crack_tip_enrichment =true
+  use_crack_tip_enrichment =false
  # use_AD=false
-  crack_front_definition = crackFrontDefinition
-  enrichment_displacements = 'enrich1_x enrich2_x enrich3_x enrich4_x enrich1_y enrich2_y enrich3_y enrich4_y'
-  displacements = 'disp_x disp_y'
-  cut_off_boundary = all
-  cut_off_radius =0.2828 #0.10984 # 0.175219 #0.527046   ####0.527 #0.1752 #
+ # crack_front_definition = crackFrontDefinition
+ # enrichment_displacements = 'enrich1_x enrich2_x enrich3_x enrich4_x enrich1_y enrich2_y enrich3_y enrich4_y'
+ # displacements = 'disp_x disp_y'
+ # cut_off_boundary = all
+ # cut_off_radius =0.275 # 0.136789 # #0.175219 #0.527046   ####0.527 #0.1752 #0.2828 #
 []
 
 
@@ -23,7 +23,7 @@
 
 
 [Mesh]
-  file = ct_msh_h0p25_ref_v1.e #compact_test2d_h05_4.e
+  file = ct_msh_h0p125_ref_v1.e #compact_test2d_h05_4.e
 []
 
 [DomainIntegral]
@@ -41,7 +41,7 @@
   output_q = true
   output_vpp = false
   incremental = true
-  used_by_xfem_to_grow_crack = false
+ # used_by_xfem_to_grow_crack = false
  # use_automatic_differentiation = false
 []
 
@@ -137,7 +137,7 @@
  [dt_func]
     type = PiecewiseLinear
     x = '0.    1e20'
-    y = '0.8  0.8'
+    y = '2 2'
   [../]
 []
 
@@ -193,10 +193,10 @@
 
 [Materials]
   [./strain]
-    type = ComputeCrackTipEnrichmentIncrementalStrain
+    type = ComputeIncrementalStrain
     displacements = 'disp_x disp_y'
-    crack_front_definition = crackFrontDefinition
-    enrichment_displacements = 'enrich1_x enrich2_x enrich3_x enrich4_x enrich1_y enrich2_y enrich3_y enrich4_y'
+ #   crack_front_definition = crackFrontDefinition
+ #   enrichment_displacements = 'enrich1_x enrich2_x enrich3_x enrich4_x enrich1_y enrich2_y enrich3_y enrich4_y'
   [../]
   [./radial_return_stress]
     type = ComputeMultipleInelasticStress
@@ -204,8 +204,8 @@
   [../]
   [./powerlawcrp]
     type = PowerLawCreepStressUpdate
-    coefficient =2.5e-23#2e-23 #
-    n_exponent =6.85#6.25## 5.4
+    coefficient =2.0e-23#2e-23 #
+    n_exponent =7.0#6.25## 5.4
     m_exponent = 0.0
     activation_energy = 0.0
    #relative_tolerance=1e-6
@@ -220,8 +220,8 @@
     ki_vectorpostprocessor = "II_KI_1"
     kii_vectorpostprocessor = "II_KII_1"
     c_vectorpostprocessor="C_1"
-    paris_coeff =0.3e-3 #1.5e-3#
-    paris_exponent =1.1#### 1.03#1.25
+    paris_coeff =0.5e-3 #1.5e-3#
+    paris_exponent =0.87#### 1.03#1.25
   []
 []
 
@@ -268,8 +268,8 @@
   #l_tol = 1e-7
   l_max_its =100
   nl_max_its = 1000
-  nl_abs_tol = 1e-2
-  nl_rel_tol = 1e-5
+  nl_abs_tol = 5e-3
+  nl_rel_tol = 1e-8
 
 # time control
   start_time = 0.0
@@ -290,7 +290,7 @@
 
 [Outputs] ###dt3_0p225.
 
-  file_base = nonAD_CCG_en_cr_cl_h0p25_d0p8_m0p3em3_n1p1_c2p5em23_e6p85
+  file_base = nonAD_CCG_cr_cl_h0p125_d0p4_m0p15em3_n0p87_c2em23_e6p8_n
   exodus = true
   csv = true
   execute_on = timestep_end

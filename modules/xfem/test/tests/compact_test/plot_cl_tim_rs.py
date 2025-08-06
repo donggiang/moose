@@ -47,7 +47,7 @@ e =0.87 #1.1 #0.87 #0.867#factor/(factor+1)
 
 ############
 # #########
-csv_path = 'nonAD_CCG_en_cr_cl_h0p1_d0p4_m0p15em3_n0p87_c2em23_e6p81_n.csv'
+csv_path = 'nonAD_CCG_en_cr_cl_h0p16_d1p6_m0p25em3_n0p87_c2em23_e6p83_n1_ri3p2_ro6p4.csv'
 # read csv file
 df4 = pd.read_csv(csv_path)
 
@@ -67,7 +67,31 @@ x4= df4['time']#
 for y_col in y_columns:
     plt.plot(x4, df4[y_col], linestyle='-',marker='none', linewidth=4, label=f'h=0.1', color='purple')
 
-csv_path = 'nonAD_CCG_en_cr_cl_h0p16_d1p6_m0p25em3_n0p87_c2em23_e6p81_n1.csv'
+
+
+############
+# #########
+csv_path = 'nonAD_CCG_en_cr_cl_h0p125_d1p6_m0p15em3_n0p87_c2em23_e6p83_n_ri2p5_ro5.csv'
+# read csv file
+df2 = pd.read_csv(csv_path)
+
+# Loop over each row, starting from the second row
+for i in range(1, len(df2["C_1_1"])):
+    current_value = df2["C_1_1"][i]
+    previous_value = df2["C_1_1"][i-1]
+
+    if i>0:
+        # Check if current value is 10 times greater than the previous value or negative
+        if current_value > 2 * previous_value or current_value < 0:
+            # Modify the current value as needed
+            # For example, set it to the previous value or some other logic
+            df2["C_1_1"][i] = previous_value
+
+x2= df2['time']#
+for y_col in y_columns:
+    plt.plot(x2, df2[y_col], linestyle='-',marker='none', linewidth=4, label=f'h=0.1', color='yellow')
+
+csv_path = 'nonAD_CCG_en_cr_cl_h0p1_d0p8_m0p15em3_n0p87_c2em23_e6p83_n_ri2_ro4.csv'
 # read csv file
 df3 = pd.read_csv(csv_path)
 
@@ -86,6 +110,7 @@ for i in range(1, len(df3["C_1_1"])):
 x3= df3['time']#
 for y_col in y_columns:
     plt.plot(x3, df3[y_col], linestyle='-',marker='none', linewidth=4, label=f'h=0.16', color='red')
+
 
 #print (df[y_col])
 # ad labels and title
@@ -130,14 +155,20 @@ length = compute_crack_length(c, e, df4[y_col], x4)
 print (length)
 print('complete print length')
 for y_col in y_columns:
-    plt.plot(x4, length, linestyle='-',marker='none', linewidth=3, label=f'h=0.1', color='purple')
+    plt.plot(x4, length, linestyle='-',marker='none', linewidth=3, label=f'h=0.16', color='purple')
+
+
+length = compute_crack_length(c, e, df2[y_col], x2)
+print (length)
+print('complete print length')
+for y_col in y_columns:
+    plt.plot(x2, length, linestyle='-',marker='none', linewidth=3, label=f'h=0.125', color='yellow')
 
 length = compute_crack_length(c, e, df3[y_col], x3)
 print (length)
 print('complete print length')
 for y_col in y_columns:
-    plt.plot(x3, length, linestyle='-',marker='none', linewidth=3, label=f'h=0.16', color='red')
-
+    plt.plot(x3, length, linestyle='-',marker='none', linewidth=3, label=f'h=0.1', color='red')
 
 # ad labels and title
 plt.xlabel('Time', fontsize=14)

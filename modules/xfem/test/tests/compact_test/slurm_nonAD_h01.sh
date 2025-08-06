@@ -1,10 +1,10 @@
 #!/bin/bash
 
 #SBATCH --nodes=1
-#SBATCH --job-name=creep
+#SBATCH --job-name=creep01
 #SBATCH -o %j.o  # stdout; %j expands to jobid
-#SBATCH --time=06:30:00
-#SBATCH --partition=general
+#SBATCH --time=23:20:00
+#SBATCH --partition=hbm
 #SBATCH --ntasks-per-node=80
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=0
@@ -14,4 +14,4 @@ module purge
 module load use.moose moose-dev-openmpi/2025.04.22
 
 # Run your application and use tee to capture the output
-mpiexec -n 80 moose-dev-exec /home/huyngd/projects/moose_AD/modules/xfem/xfem-opt -i CCG_enriched_creep_crack.i ####--distributed-mesh  ####  --split-mesh 112 --split-file ct_h0p4 #
+mpiexec -n 80 moose-dev-exec /home/huyngd/projects/moose_AD/modules/xfem/xfem-opt -i CCG_enriched_creep_crack_h010.i ####--distributed-mesh  ####  --split-mesh 112 --split-file ct_h0p4 #
