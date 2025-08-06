@@ -256,7 +256,7 @@ ComputeCrackTipEnrichmentIncrementalStrain::computeProperties()
     //                                      _grad_disp_tensor_old[_qp].transpose());
 
     //   _grad_disp_rate[_qp] = ((_grad_disp_tensor[_qp]) - grad_disp_tensor_old)/_dt;
-    //   _grad_disp_rate[_qp] = ((_grad_disp_tensor[_qp]) - (_grad_disp_tensor_old[_qp]))/_dt/1.0;
+    _grad_disp_rate[_qp] = ((_grad_disp_tensor[_qp]) - (_grad_disp_tensor_old[_qp]))/_dt/1.0;
 
     // total strain
     _total_strain[_qp] = _total_strain_old[_qp] + _strain_increment[_qp];

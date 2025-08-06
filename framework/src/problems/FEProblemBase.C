@@ -7962,7 +7962,7 @@ FEProblemBase::updateMeshXFEM()
     {
       meshChanged();
       _xfem->initSolution(_nl, *_aux);
-      restoreSolutions();
+      //restoreSolutions();
     }
   }
   return updated;

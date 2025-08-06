@@ -56,6 +56,8 @@ EshelbyTensorTempl<is_ad>::EshelbyTensorTempl(const InputParameters & parameters
     _stress_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "stress")),
     _grad_disp(3),
     _grad_disp_old(3),
+    _grad_disp_rate(getMaterialProperty<RankTwoTensor>(_base_name + "grad_disp_rate")),
+    _grad_disp_rate_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "grad_disp_rate")),
     _J_thermal_term_vec(declareProperty<RealVectorValue>("J_thermal_term_vec")),
     _grad_temp(coupledGradient("temperature")),
     _has_temp(isCoupled("temperature")),
@@ -142,7 +144,8 @@ EshelbyTensorTempl<is_ad>::computeQpProperties()
     RankTwoTensor F_dot = (H - H_old) / _dt;
 
     // FdotTP = Fdot^T * P = Fdot^T * detF * sigma * FinvT;
-    RankTwoTensor FdotTP = F_dot.transpose() * P;
+    //RankTwoTensor FdotTP = F_dot.transpose() * P;
+    RankTwoTensor FdotTP = _grad_disp_rate[_qp].transpose() * P;
 
     (*_eshelby_tensor_dissipation)[_qp] = Wdot - FdotTP;
   }
