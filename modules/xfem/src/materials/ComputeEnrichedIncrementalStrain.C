@@ -112,20 +112,10 @@ ComputeEnrichedIncrementalStrainTempl<is_ad>::computeProperties()
     fe->reinit(_current_elem);
 
   _sln = _nl->currentSolution();
-  // NumericVector<Number> & current_solution = *_nlb->system().current_local_solution;
 
   for (unsigned int i = 0; i < _BI.size(); ++i)
     EnrichFunctionUtility::crackTipEnrichementFunctionAtPoint(
         _crack_front_definition, *(_current_elem->node_ptr(i)), _BI[i]);
-
-  // // fetch coupled gradients
-  // for (unsigned int i = 0; i < _ndisp; ++i)
-  //   _grad_disp[i] = &coupledGradient("displacements", i);
-
-  //   // fetch coupled gradients previous step
-  //   for (unsigned int i = 0; i < _ndisp; ++i)
-  //     _grad_disp_old[i] = &coupledGradientOld("displacements", i);
-
   // incremental strain
   Real volumetric_strain = 0.0;
   for (_qp = 0; _qp < _qrule->n_points(); ++_qp)
@@ -140,17 +130,6 @@ ComputeEnrichedIncrementalStrainTempl<is_ad>::computeProperties()
     for (unsigned int i = 0; i < 4; ++i)
       EnrichFunctionUtility::rotateFromCrackFrontCoordsToGlobal(
           _crack_front_definition, _dBx[i], _dBX[i], crack_front_point_index);
-
-    // if(_qp==0 &&_current_elem->id()==0)
-    // {
-    //     std::cout<< "ComputeCrackTipEnrichmentIncrementalStrain
-    //     before**********************\n"; std::cout<< "current solution: \n"; std::cout<<
-    //     *_nl->currentSolution()<<"\n"; std::cout<< "old solution: \n"; std::cout<<
-    //     _nl->solutionOld()<<"\n";
-
-    //    // std::cout<< "ComputeCrackTipEnrichmentIncrementalStrain after**********************\n";
-    // }
-    // _sln_old = _nl->solutionOld();
 
     for (unsigned int m = 0; m < _ndisp; ++m)
     {
@@ -182,25 +161,21 @@ ComputeEnrichedIncrementalStrainTempl<is_ad>::computeProperties()
 
     _grad_enrich_disp_tensor[_qp] = GenericRankTwoTensor<is_ad>::initializeFromRows(
         _grad_enrich_disp[0], _grad_enrich_disp[1], _grad_enrich_disp[2]);
-    /////  standard strain part
+
     // Deformation gradient
     _grad_disp_tensor[_qp] = GenericRankTwoTensor<is_ad>::initializeFromRows(
         (*_grad_disp[0])[_qp], (*_grad_disp[1])[_qp], (*_grad_disp[2])[_qp]);
-    // _deformation_gradient[_qp] = _grad_disp_tensor[_qp] + _grad_enrich_disp_tensor[_qp];
-    // _deformation_gradient[_qp].addIa(1.0);
 
     _small_strain[_qp] =
         0.5 * ((_grad_disp_tensor[_qp] + _grad_enrich_disp_tensor[_qp]) +
                (_grad_disp_tensor[_qp] + _grad_enrich_disp_tensor[_qp]).transpose());
     _strain_increment[_qp] = _small_strain[_qp] - _small_strain_old[_qp];
 
+    ComputeIncrementalStrainBaseParent<is_ad>::_grad_disp_rate[_qp] =
+        (MetaPhysicL::raw_value((_grad_disp_tensor[_qp])) - (_grad_disp_tensor_old[_qp])) / _dt;
+
     // total strain
     _total_strain[_qp] = _total_strain_old[_qp] + _strain_increment[_qp];
-
-    // std::cout<< "enrich_strain: " << enrich_strain << "\n";
-
-    // Remove the Eigen strain increment
-    // subtractEigenstrainIncrementFromStrain(_strain_increment[_qp]);
 
     // strain rate
     if (_dt > 0)

@@ -75,6 +75,9 @@ XFEMAction::validParams()
                                              "Boundary that contains all nodes for which "
                                              "enrichment DOFs should be fixed away from crack tip "
                                              "(only needed if 'use_crack_tip_enrichment=true')");
+  params.addParam<std::vector<TagName>>("absolute_value_vector_tags",
+                                        "The tag names for extra vectors that the absolute value "
+                                        "of the residual should be accumulated into");
   params.addParam<Real>("cut_off_radius",
                         "The cut off radius of crack tip enrichment functions (only needed if "
                         "'use_crack_tip_enrichment=true')");
@@ -183,6 +186,8 @@ XFEMAction::act()
         params.set<UserObjectName>("crack_front_definition") = _crack_front_definition;
         params.set<std::vector<VariableName>>("enrichment_displacements") = _enrich_displacements;
         params.set<std::vector<VariableName>>("displacements") = _displacements;
+        params.set<std::vector<TagName>>("absolute_value_vector_tags") =
+            getParam<std::vector<TagName>>("absolute_value_vector_tags");
         _problem->addKernel(
             "CrackTipEnrichmentStressDivergenceTensors", _enrich_displacements[i], params);
       }
@@ -196,6 +201,8 @@ XFEMAction::act()
         params.set<UserObjectName>("crack_front_definition") = _crack_front_definition;
         params.set<std::vector<VariableName>>("enrichment_displacements") = _enrich_displacements;
         params.set<std::vector<VariableName>>("displacements") = _displacements;
+        params.set<std::vector<TagName>>("absolute_value_vector_tags") =
+            getParam<std::vector<TagName>>("absolute_value_vector_tags");
         _problem->addKernel(
             "ADCrackTipEnrichmentStressDivergenceTensors", _enrich_displacements[i], params);
       }

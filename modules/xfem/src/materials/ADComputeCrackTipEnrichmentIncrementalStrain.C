@@ -197,6 +197,9 @@ ADComputeCrackTipEnrichmentIncrementalStrain::computeProperties()
     //            (grad_disp_tensor_old + grad_enrich_disp_tensor_old).transpose());
 
     _strain_increment[_qp] = _small_strain[_qp] - _small_strain_old[_qp];
+    _grad_disp_rate[_qp] =
+        (MetaPhysicL::raw_value((_grad_disp_tensor[_qp])) - (_grad_disp_tensor_old[_qp])) / _dt /
+        1.0;
 
     _total_strain[_qp] = _total_strain_old[_qp] + _strain_increment[_qp];
 

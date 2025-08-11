@@ -140,11 +140,7 @@ EshelbyTensorTempl<is_ad>::computeQpProperties()
     RankTwoTensor Wdot = RankTwoTensor(RankTwoTensor::initIdentity);
     Wdot *= ((*_serd)[_qp] * detF);
 
-    // F_dot = (F - F_old)/dt
-    RankTwoTensor F_dot = (H - H_old) / _dt;
-
-    // FdotTP = Fdot^T * P = Fdot^T * detF * sigma * FinvT;
-    //RankTwoTensor FdotTP = F_dot.transpose() * P;
+    // RankTwoTensor F_dot = (H - H_old) / _dt;
     RankTwoTensor FdotTP = _grad_disp_rate[_qp].transpose() * P;
 
     (*_eshelby_tensor_dissipation)[_qp] = Wdot - FdotTP;

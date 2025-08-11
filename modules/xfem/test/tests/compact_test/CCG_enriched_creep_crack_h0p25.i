@@ -1,6 +1,15 @@
+[Problem]
+
+  type = ReferenceResidualProblem
+  reference_vector = 'ref'
+  extra_tag_vectors = 'ref'
+
+[]
 [GlobalParams]
   displacements = 'disp_x disp_y'
   volumetric_locking_correction =false
+  absolute_value_vector_tags = ref
+
 []
 
 [XFEM]
@@ -8,13 +17,13 @@
   #qrule = volfrac
   qrule = moment_fitting
   output_cut_plane = true
+  use_AD=false
   use_crack_tip_enrichment =true
- # use_AD=false
   crack_front_definition = crackFrontDefinition
   enrichment_displacements = 'enrich1_x enrich2_x enrich3_x enrich4_x enrich1_y enrich2_y enrich3_y enrich4_y'
   displacements = 'disp_x disp_y'
   cut_off_boundary = all
-  cut_off_radius =0.2828 #0.10984 # 0.175219 #0.527046   ####0.527 #0.1752 #
+  cut_off_radius =0.2693  ####0.527 #0.1752 #0.2828 #0.10984 # 0.175219
 []
 
 
@@ -37,12 +46,12 @@
   radius_outer = '6.5' #'4.0'
   youngs_modulus = 120000.0
   poissons_ratio = 0.3
-  inelastic_models = 'powerlawcrp'
+ inelastic_models = 'powerlawcrp'
   output_q = true
   output_vpp = false
   incremental = true
   used_by_xfem_to_grow_crack = false
- # use_automatic_differentiation = false
+  use_automatic_differentiation = false
 []
 
 
@@ -89,7 +98,7 @@
     add_variables = true
     incremental = true
     generate_output = 'stress_xx stress_yy'
-   # use_automatic_differentiation =false
+    use_automatic_differentiation =false
   []
 []
 
@@ -137,9 +146,10 @@
  [dt_func]
     type = PiecewiseLinear
     x = '0.    1e20'
-    y = '0.8  0.8'
+    y = '1.6 1.6'
   [../]
 []
+
 
 [DiracKernels]
   [point1]
@@ -186,103 +196,81 @@
 [Materials]
   [./elasticity_tensor]
     type = ComputeIsotropicElasticityTensor
-    youngs_modulus = 120000.0
-    poissons_ratio = 0.3
+  youngs_modulus = 120000
+  poissons_ratio = 0.3
   [../]
 []
 
 [Materials]
   [./strain]
-    type = ComputeCrackTipEnrichmentIncrementalStrain
+    type =ComputeCrackTipEnrichmentIncrementalStrain #ADComputeGreenLagrangeStrain
     displacements = 'disp_x disp_y'
     crack_front_definition = crackFrontDefinition
     enrichment_displacements = 'enrich1_x enrich2_x enrich3_x enrich4_x enrich1_y enrich2_y enrich3_y enrich4_y'
   [../]
+  #[./stress]
+  #  type = ADComputeFiniteStrainElasticStress
+  #[../]
   [./radial_return_stress]
     type = ComputeMultipleInelasticStress
-    inelastic_models = 'powerlawcrp'
+    inelastic_models ='powerlawcrp'
   [../]
   [./powerlawcrp]
     type = PowerLawCreepStressUpdate
-    coefficient =2.5e-23#2e-23 #
-    n_exponent =6.85#6.25## 5.4
+    coefficient =1.0e-23#2e-23 #
+    n_exponent =7.1#6.25## 5.4
     m_exponent = 0.0
     activation_energy = 0.0
    #relative_tolerance=1e-6
    # absolute_tolerance=1e-4
   [../]
 []
+
 [UserObjects]
   [cut_mesh2]
     type = MeshCut2DCCGUserObject
     mesh_file = initialcrack14p86.e
-    growth_increment = 0.0000
+    growth_increment = 0.000
     ki_vectorpostprocessor = "II_KI_1"
     kii_vectorpostprocessor = "II_KII_1"
     c_vectorpostprocessor="C_1"
-    paris_coeff =0.3e-3 #1.5e-3#
-    paris_exponent =1.1#### 1.03#1.25
+    paris_coeff =3e-4 #1.5e-3#
+    paris_exponent =0.9#### 1.03#1.25
   []
 []
-
-#[UserObjects]
-##  [cut_mesh2]
-#    type = MeshCut2DFractureUserObject
-#    mesh_file = initialcrack14p86.e
-#    growth_increment =0.0127
-#    ki_vectorpostprocessor = "II_KI_1"
-#    k_critical =0
-#  []
-#[]
-
 
 [Executioner]
   type = Transient
 
-  #solve_type = 'PJFNK'
   solve_type = 'Newton'
-  #petsc_options_iname = '-snes_fd -snes_fd_color -snes_fd_function_eps -pc_type'
-  #petsc_options_value = 'true true 1e-8 lu'
- # petsc_options = '-snes_test_jacobian'
- #petsc_options = '-snes_fd' # -snes_test_jacobian_view and optionally -snes_test_jacobian <threshold> t
 
-  petsc_options_iname = '-pc_type'
-  petsc_options_value = 'lu'
 
-  #petsc_options = '-snes_test_jacobian'
-  #petsc_options_iname = '-pc_type -pc_hypre_type -ksp_gmres_restart -pc_hypre_boomeramg_strong_threshold'
-  #petsc_options_value = 'hypre boomeramg 50 0.7'
-
- # solve_type = 'Newton'
- #petsc_options_iname = '-ksp_type -pc_type'
-  #petsc_options_value = 'preonly lu'
-
- line_search = none#
+  #petsc_options = '-snes_ksp_ew'
+  petsc_options_iname = '-pc_type '
+  petsc_options_value = 'lu '
   [./Quadrature]
     type = GAUSS
     order = SIXTH
   [../]
 
 
-  #l_max_its = 20
-  #l_tol = 1e-7
-  l_max_its =100
-  nl_max_its = 1000
-  nl_abs_tol = 1e-2
-  nl_rel_tol = 1e-5
+  l_max_its = 50
+  nl_max_its = 300
 
+  nl_abs_tol = 1e-12
+  nl_rel_tol = 1e-6
+ #line_search=none
 # time control
   start_time = 0.0
- # dt =1.6
+ # dt = 1.6
+  end_time =500
+  automatic_scaling = true
   [TimeStepper]
     type = FunctionDT
-    function = 'dt_func'
-    growth_factor =2
+    function = '0.8'
+    growth_factor = 2
     cutback_factor_at_failure = 0.5
   []
-  end_time =400
-
-
   max_xfem_update = 1
 []
 
@@ -290,7 +278,7 @@
 
 [Outputs] ###dt3_0p225.
 
-  file_base = nonAD_CCG_en_cr_cl_h0p25_d0p8_m0p3em3_n1p1_c2p5em23_e6p85
+  file_base = CCG_en_cr_cl_h0p25_d4_m5em4_n0p9
   exodus = true
   csv = true
   execute_on = timestep_end

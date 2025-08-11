@@ -1,6 +1,14 @@
+
+
+[Problem]
+type = ReferenceResidualProblem
+ reference_vector = 'ref'
+ extra_tag_vectors = 'ref'
+[]
+
 [GlobalParams]
   displacements = 'disp_x disp_y'
-  volumetric_locking_correction =false
+  absolute_value_vector_tags = ref
 []
 
 [XFEM]
@@ -14,7 +22,7 @@
   enrichment_displacements = 'enrich1_x enrich2_x enrich3_x enrich4_x enrich1_y enrich2_y enrich3_y enrich4_y'
   displacements = 'disp_x disp_y'
   cut_off_boundary = all
-  cut_off_radius =0.26925  ####0.527 #0.1752 #0.2828 #0.10984 # 0.175219
+  cut_off_radius =0.2693 ####0.527 #0.1752 #0.2828 #0.10984 # 0.175219
 []
 
 
@@ -186,14 +194,14 @@
 [Materials]
   [./elasticity_tensor]
     type = ADComputeIsotropicElasticityTensor
-    youngs_modulus = 120000.0
+    youngs_modulus =120000
     poissons_ratio = 0.3
   [../]
 []
 
 [Materials]
   [./strain]
-    type = ADComputeCrackTipEnrichmentIncrementalStrain
+    type = ADComputeEnrichedIncrementalStrain
     displacements = 'disp_x disp_y'
     crack_front_definition = crackFrontDefinition
     enrichment_displacements = 'enrich1_x enrich2_x enrich3_x enrich4_x enrich1_y enrich2_y enrich3_y enrich4_y'
@@ -204,8 +212,8 @@
   [../]
   [./powerlawcrp]
     type = ADPowerLawCreepStressUpdate
-    coefficient =4e-24#2e-23 #
-    n_exponent =6.4#6.25## 5.4
+    coefficient =1.0e-23#2e-23 #
+    n_exponent =7.2#6.25## 5.4
     m_exponent = 0.0
     activation_energy = 0.0
    #relative_tolerance=1e-6
@@ -216,30 +224,19 @@
   [cut_mesh2]
     type = MeshCut2DCCGUserObject
     mesh_file = initialcrack14p86.e
-    growth_increment = 0.00002
+    growth_increment = 0.000
     ki_vectorpostprocessor = "II_KI_1"
     kii_vectorpostprocessor = "II_KII_1"
     c_vectorpostprocessor="C_1"
-    paris_coeff =0.6e-2 #1.5e-3#
-    paris_exponent =0.95#### 1.03#1.25
+    paris_coeff =0.8e-4#1.5e-3#
+    paris_exponent =1.3#### 1.03#1.25
   []
 []
-
-#[UserObjects]
-##  [cut_mesh2]
-#    type = MeshCut2DFractureUserObject
-#    mesh_file = initialcrack14p86.e
-#    growth_increment =0.0127
-#    ki_vectorpostprocessor = "II_KI_1"
-#    k_critical =0
-#  []
-#[]
 
 
 [Executioner]
   type = Transient
 
-  #solve_type = 'PJFNK'
   solve_type = 'Newton'
   #petsc_options_iname = '-snes_fd -snes_fd_color -snes_fd_function_eps -pc_type'
   #petsc_options_value = 'true true 1e-8 lu'
@@ -249,15 +246,7 @@
   petsc_options_iname = '-pc_type'
   petsc_options_value = 'lu'
 
-  #petsc_options = '-snes_test_jacobian'
-  #petsc_options_iname = '-pc_type -pc_hypre_type -ksp_gmres_restart -pc_hypre_boomeramg_strong_threshold'
-  #petsc_options_value = 'hypre boomeramg 50 0.7'
-
- # solve_type = 'Newton'
- #petsc_options_iname = '-ksp_type -pc_type'
-  #petsc_options_value = 'preonly lu'
-
- line_search = none#
+ #line_search = none#
   [./Quadrature]
     type = GAUSS
     order = SIXTH
@@ -267,17 +256,18 @@
   #l_max_its = 20
   #l_tol = 1e-7
   l_max_its =100
-  nl_max_its = 25
+  nl_max_its =50
 
   nl_abs_tol = 1e-5
   nl_rel_tol = 1e-9
+  automatic_scaling = true
 
 # time control
   start_time = 0.0
  # dt =1.6
   [TimeStepper]
     type = FunctionDT
-    function = 'dt_func'
+    function = '3.2'
     growth_factor =2
     cutback_factor_at_failure = 0.5
   []
@@ -291,7 +281,7 @@
 
 [Outputs] ###dt3_0p225.
 
-  file_base = CCG_en_cr_cl_h0p25_d0p01_m0p6_n0p95_c4em24_e6p4
+  file_base = ADCCG_en_cr_cl_h0p25_d0p8_m3em4_n0p9_e7p1_test
   exodus = true
   csv = true
   execute_on = timestep_end

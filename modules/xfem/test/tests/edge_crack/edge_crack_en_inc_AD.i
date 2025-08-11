@@ -1,27 +1,36 @@
-[GlobalParams]
-  displacements = 'disp_x disp_y'
-  volumetric_locking_correction = false
-[]
+[Problem]
+  type = ReferenceResidualProblem
+   reference_vector = 'ref'
+   extra_tag_vectors = 'ref'
+  []
+
+  [GlobalParams]
+    displacements = 'disp_x disp_y'
+    absolute_value_vector_tags = ref
+  []
+
 [XFEM]
   geometric_cut_userobjects = 'cut_mesh2'
   #qrule = volfrac
   qrule = moment_fitting
   output_cut_plane = true
-  use_crack_tip_enrichment =true
   use_AD=true
+  use_crack_tip_enrichment =true
   crack_front_definition = crackFrontDefinition
   enrichment_displacements = 'enrich1_x enrich2_x enrich3_x enrich4_x enrich1_y enrich2_y enrich3_y enrich4_y'
   displacements = 'disp_x disp_y'
   cut_off_boundary = all
-  cut_off_radius =0.3726 #0.10984 #0.3004 #
+  cut_off_radius = 3
 []
+
 
 
 
 [Mesh]
    #file = edge_crack.e
-  file =  square3_3.e
+  file = tensile20x40_1.e
 []
+
 [DomainIntegral]
   integrals = 'JIntegral InteractionIntegralKI InteractionIntegralKII'
   displacements = 'disp_x disp_y'
@@ -29,16 +38,18 @@
   2d = true
   number_points_from_provider = 1
   crack_direction_method = CurvedCrackFront
-  radius_inner = '0.3'
-  radius_outer = '0.5'
+  radius_inner = '3'
+  radius_outer = '5'
   youngs_modulus = 200000
   poissons_ratio = 0.3
   output_q = true
   output_vpp = false
-  incremental = true
+  incremental =true
   used_by_xfem_to_grow_crack = false
   use_automatic_differentiation = true
+
 []
+
 
 
 [Variables]
@@ -77,14 +88,15 @@
 
 [Kernels]
   [./TensorMechanics]
-  use_displaced_mesh = false
     displacements = 'disp_x disp_y'
         add_variables = true
     incremental = true
     generate_output = 'stress_xx stress_yy'
     use_automatic_differentiation = true
+
   [../]
 []
+
 [AuxKernels]
   [./stress_xx]
     type = ADRankTwoAux
@@ -118,6 +130,7 @@
     execute_on = timestep_end
   [../]
 []
+
 [Functions]
   [./rampConstant]
     type = PiecewiseLinear
@@ -128,7 +141,7 @@
  [dt_func]
     type = PiecewiseLinear
     x = '0.    1e-12 1e20'
-    y = '0.1  0.1 0.1'
+    y = '0.05  0.05 0.05'
   [../]
 []
 
@@ -172,69 +185,57 @@
     crack_front_definition = crackFrontDefinition
     enrichment_displacements = 'enrich1_x enrich2_x enrich3_x enrich4_x enrich1_y enrich2_y enrich3_y enrich4_y'
   [../]
-    [./radial_return_stress]
-      type = ADComputeMultipleInelasticStress
-      inelastic_models = 'powerlawcrp'
-    [../]
-    [./powerlawcrp]
-      type = ADPowerLawCreepStressUpdate
-      coefficient =2e-23 #6e-24#2e-23 #
-      n_exponent =6.3#6.25## 5.4
-      m_exponent = 0.0
-      activation_energy = 0.0
-     #relative_tolerance=1e-6
-     # absolute_tolerance=1e-4
-    [../]
-#  [./stress]
-#    type = ComputeFiniteStrainElasticStress
-#  [../]
+  [./stress]
+    type = ADComputeFiniteStrainElasticStress
+  [../]
 []
+
 [UserObjects]
   [cut_mesh2]
     type = MeshCut2DFractureUserObject
-    mesh_file = line0p45.e
-    growth_increment =0.15
+    mesh_file = crackedge5p3.e
+    growth_increment = 0.27
     ki_vectorpostprocessor = "II_KI_1"
     k_critical =0
   []
 []
 
+
+
 [Executioner]
   type = Transient
 
   solve_type = 'Newton'
+
   petsc_options_iname = '-pc_type'
   petsc_options_value = 'lu'
 
-  line_search = 'none'
+  #line_search = 'none'
+  automatic_scaling = true
+
   [./Quadrature]
     type = GAUSS
-    order =SIXTH
+    order = SIXTH
   [../]
 
-#  [./Predictor]
-#    type = SimplePredictor
-#    scale = 0.0
-#  [../]
 
   l_max_its = 50
-  nl_max_its = 500
+  nl_max_its = 30
 
-  nl_abs_tol = 1e-4
-  nl_rel_tol = 1e-7
-  #l_tol=1e-3
+  nl_abs_tol = 1e-5
+  nl_rel_tol = 1e-8
 
 # time control
   start_time = 0.0
-  dt = 0.1
-  end_time =0.5
+  dt = 0.05
+  end_time =3.8
 
   max_xfem_update = 1
 []
 
 
 [Outputs]
-  file_base = CCG_en_cr_cl_h0p16_dt2_rd0p59_ri2_ro6p5_0p18em3_e1p35_c6em24_n6p8_v2
+  file_base = ADedge_crack_2d_en_inc_ri3_ro5
   exodus = true
   csv = true
   execute_on = timestep_end

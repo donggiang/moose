@@ -17,7 +17,7 @@ def compute_crack_length(c, n, B, time):
             #B[i] = B[i]/4
           # if(i==0):
            # B[i] = B[i]/100000
-  
+
            increment = c * pow(B[i], n) * dt
 
         else:
