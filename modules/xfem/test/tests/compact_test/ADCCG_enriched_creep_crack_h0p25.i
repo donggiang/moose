@@ -42,7 +42,7 @@ type = ReferenceResidualProblem
   number_points_from_provider = 1
   crack_direction_method = CurvedCrackFront
   radius_inner = '2.5' #'1.4'
-  radius_outer = '6.5' #'4.0'
+  radius_outer = '7' #'4.0'
   youngs_modulus = 120000.0
   poissons_ratio = 0.3
   inelastic_models = 'powerlawcrp'
@@ -213,11 +213,12 @@ type = ReferenceResidualProblem
   [./powerlawcrp]
     type = ADPowerLawCreepStressUpdate
     coefficient =1.0e-23#2e-23 #
-    n_exponent =7.2#6.25## 5.4
+    n_exponent =7.1#6.25## 5.4
     m_exponent = 0.0
     activation_energy = 0.0
    #relative_tolerance=1e-6
    # absolute_tolerance=1e-4
+    # output_properties = 'creep_rate'
   [../]
 []
 [UserObjects]
@@ -228,8 +229,8 @@ type = ReferenceResidualProblem
     ki_vectorpostprocessor = "II_KI_1"
     kii_vectorpostprocessor = "II_KII_1"
     c_vectorpostprocessor="C_1"
-    paris_coeff =0.8e-4#1.5e-3#
-    paris_exponent =1.3#### 1.03#1.25
+    paris_coeff =3e-4#1.5e-3#
+    paris_exponent =0.95#### 1.03#1.25
   []
 []
 
@@ -281,7 +282,7 @@ type = ReferenceResidualProblem
 
 [Outputs] ###dt3_0p225.
 
-  file_base = ADCCG_en_cr_cl_h0p25_d0p8_m3em4_n0p9_e7p1_test
+  file_base = ADCCG_en_cr_cl_h0p25_d0p8_m3em4_n0p9_e7p1_test_v1_ro7
   exodus = true
   csv = true
   execute_on = timestep_end

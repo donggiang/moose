@@ -107,8 +107,8 @@ MeshCut2DCCGUserObject::findActiveBoundaryGrowth()
       Real growth_increment = _growth_increment;
       //  std::cout<< "ci_old: " << ci_old << "\n";
       //  std::cout<< "ci: " << ci << "\n";
-      if (ci_old > 0.0 && (ci > 10.0 * ci_old || ci < 0.0))
-        ci = ci_old;
+      // if (ci_old > 0.0 && (ci > 10.0 * ci_old || ci < 0.0))
+      //   ci = ci_old;
 
       ci_old = ci;
 
@@ -120,6 +120,7 @@ MeshCut2DCCGUserObject::findActiveBoundaryGrowth()
       //   growth_increment = (0.43323*ci - 0.0012762)*_dt*1000.0;
 
       // if (std::abs(ci) <= 1.0e9 && _t > _dt)
+      // if (_t > _dt)
       growth_increment =
           std::max(_paris_coeff * std::pow(ci, _paris_exponent) * _dt, _growth_increment);
 

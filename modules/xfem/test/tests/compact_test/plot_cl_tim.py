@@ -39,49 +39,49 @@ plt.figure(figsize=(10,6))
 y_columns = ['C_1_1']
 
 
-c= 0.15e-3
-e =0.87 #1.1 #0.87 #0.867#factor/(factor+1)
+c= 3e-4
+e =0.95 #1.1 #0.87 #0.867#factor/(factor+1)
 
 
 
 
 ############
 # #########
-csv_path = 'nonAD_CCG_en_cr_cl_h0p1_d0p4_m0p15em3_n0p87_c2em23_e6p81_n.csv'
+csv_path = 'ADCCG_en_cr_cl_h0p25_d0p8_m3em4_n0p9_e7p1_test.csv'
 # read csv file
 df4 = pd.read_csv(csv_path)
 
-# Loop over each row, starting from the second row
-for i in range(1, len(df4["C_1_1"])):
-    current_value = df4["C_1_1"][i]
-    previous_value = df4["C_1_1"][i-1]
+# # Loop over each row, starting from the second row
+# for i in range(1, len(df4["C_1_1"])):
+#     current_value = df4["C_1_1"][i]
+#     previous_value = df4["C_1_1"][i-1]
 
-    if i>0:
-        # Check if current value is 10 times greater than the previous value or negative
-        if current_value > 2 * previous_value or current_value < 0:
-            # Modify the current value as needed
-            # For example, set it to the previous value or some other logic
-            df4["C_1_1"][i] = previous_value
+#     if i>0:
+#         # Check if current value is 10 times greater than the previous value or negative
+#         if current_value > 2 * previous_value or current_value < 0:
+#             # Modify the current value as needed
+#             # For example, set it to the previous value or some other logic
+#             df4["C_1_1"][i] = previous_value
 
 x4= df4['time']#
 for y_col in y_columns:
     plt.plot(x4, df4[y_col], linestyle='-',marker='none', linewidth=4, label=f'h=0.1', color='purple')
 
-csv_path = 'nonAD_CCG_en_cr_cl_h0p16_d1p6_m0p25em3_n0p87_c2em23_e6p81_n1.csv'
+csv_path = 'ADCCG_en_cr_cl_h0p25_d0p8_m3em4_n0p9_e7p1_test_v1.csv'
 # read csv file
 df3 = pd.read_csv(csv_path)
 
-# Loop over each row, starting from the second row
-for i in range(1, len(df3["C_1_1"])):
-    current_value = df3["C_1_1"][i]
-    previous_value = df3["C_1_1"][i-1]
+# # Loop over each row, starting from the second row
+# for i in range(1, len(df3["C_1_1"])):
+#     current_value = df3["C_1_1"][i]
+#     previous_value = df3["C_1_1"][i-1]
 
-    if i>0:
-        # Check if current value is 10 times greater than the previous value or negative
-        if current_value > 2 * previous_value or current_value < 0:
-            # Modify the current value as needed
-            # For example, set it to the previous value or some other logic
-            df3["C_1_1"][i] = previous_value
+#     if i>0:
+#         # Check if current value is 10 times greater than the previous value or negative
+#         if current_value > 2 * previous_value or current_value < 0:
+#             # Modify the current value as needed
+#             # For example, set it to the previous value or some other logic
+#             df3["C_1_1"][i] = previous_value
 
 x3= df3['time']#
 for y_col in y_columns:
