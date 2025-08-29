@@ -31,6 +31,9 @@ IsotropicPlasticityStressUpdateTempl<is_ad>::validParams()
   params.addParam<FunctionName>("hardening_function",
                                 "True stress as a function of plastic strain");
   params.addParam<Real>("hardening_constant", "Hardening slope");
+  params.addParam<Real>("ultimate_strength", "Ultimate strength");
+  params.addParam<Real>("saturate_coefficient", "Saturate coefficient");
+
   params.addCoupledVar("temperature", 0.0, "Coupled Temperature");
   params.addDeprecatedParam<std::string>(
       "plastic_prepend",
@@ -58,6 +61,12 @@ IsotropicPlasticityStressUpdateTempl<is_ad>::IsotropicPlasticityStressUpdateTemp
     _hardening_function(this->isParamValid("hardening_function")
                             ? &this->getFunction("hardening_function")
                             : nullptr),
+    _ultimate_strength(this->isParamValid("ultimate_strength")
+                           ? this->template getParam<Real>("ultimate_strength")
+                           : 0),
+    _saturate_coefficient(this->isParamValid("saturate_coefficient")
+                              ? this->template getParam<Real>("saturate_coefficient")
+                              : 0),
     _yield_condition(-1.0), // set to a non-physical value to catch uninitalized yield condition
     _hardening_slope(0.0),
     _plastic_strain(this->template declareGenericProperty<RankTwoTensor, is_ad>(
@@ -131,9 +140,11 @@ IsotropicPlasticityStressUpdateTempl<is_ad>::computeResidual(
     _hardening_slope = computeHardeningDerivative(scalar);
     _hardening_variable[_qp] = computeHardeningValue(scalar);
 
-    return (effective_trial_stress - _hardening_variable[_qp] - _yield_stress) /
-               _three_shear_modulus -
-           scalar;
+    // return (effective_trial_stress - _hardening_variable[_qp] - _yield_stress) /
+    //            _three_shear_modulus -
+    //        scalar;
+    return (effective_trial_stress - _hardening_variable[_qp] - _yield_stress) -
+           _three_shear_modulus * scalar;
   }
 
   return 0.0;
@@ -145,7 +156,8 @@ IsotropicPlasticityStressUpdateTempl<is_ad>::computeDerivative(
     const GenericReal<is_ad> & /*effective_trial_stress*/, const GenericReal<is_ad> & /*scalar*/)
 {
   if (_yield_condition > 0.0)
-    return -1.0 - _hardening_slope / _three_shear_modulus;
+    // return -1.0 - _hardening_slope / _three_shear_modulus;
+    return -_hardening_slope - _three_shear_modulus;
 
   return 1.0;
 }
@@ -177,13 +189,14 @@ IsotropicPlasticityStressUpdateTempl<is_ad>::computeHardeningValue(
     return _hardening_function->value(strain_old + scalar) - _yield_stress;
   }
 
-  return _hardening_variable_old[_qp] + _hardening_slope * scalar;
+  return _hardening_variable_old[_qp] + _hardening_slope * scalar +
+         (_ultimate_strength - _yield_stress) * (1.0 - std::exp(-_saturate_coefficient * scalar));
 }
 
 template <bool is_ad>
 GenericReal<is_ad>
 IsotropicPlasticityStressUpdateTempl<is_ad>::computeHardeningDerivative(
-    const GenericReal<is_ad> & /*scalar*/)
+    const GenericReal<is_ad> & scalar)
 {
   if (_hardening_function)
   {
@@ -191,7 +204,9 @@ IsotropicPlasticityStressUpdateTempl<is_ad>::computeHardeningDerivative(
     return _hardening_function->timeDerivative(strain_old);
   }
 
-  return _hardening_constant;
+  return _hardening_constant + _saturate_coefficient * (_ultimate_strength - _yield_stress) *
+                                   (std::exp(-_saturate_coefficient * scalar));
+  ;
 }
 
 template <bool is_ad>

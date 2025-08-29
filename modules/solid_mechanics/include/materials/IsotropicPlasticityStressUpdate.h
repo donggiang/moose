@@ -72,6 +72,8 @@ protected:
   GenericReal<is_ad> _yield_stress;
   const Real _hardening_constant;
   const Function * const _hardening_function;
+  const Real _ultimate_strength;
+  const Real _saturate_coefficient;
 
   GenericReal<is_ad> _yield_condition;
   GenericReal<is_ad> _hardening_slope;
