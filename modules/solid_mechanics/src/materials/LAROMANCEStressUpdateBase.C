@@ -784,6 +784,7 @@ LAROMANCEStressUpdateBaseTempl<is_ad>::computeResidual(
   GenericReal<is_ad> trial_stress_mpa = _stress_function
                                             ? _stress_function->value(_t, _q_point[_qp])
                                             : effective_trial_stress * _stress_ucf;
+
   GenericReal<is_ad> dtrial_stress_dscalar = 0.0;
 
   // Update stress if strain is being applied, i.e. non-testing simulation
@@ -920,6 +921,14 @@ LAROMANCEStressUpdateBaseTempl<is_ad>::computeResidual(
     return 0.0;
   }
   return total_rom_effective_strain_inc - scalar;
+}
+
+template <bool is_ad>
+GenericReal<is_ad>
+LAROMANCEStressUpdateBaseTempl<is_ad>::computeCreepStrainRate(
+    const GenericReal<is_ad> & /*stress_eq*/)
+{
+  return _creep_rate[_qp];
 }
 
 template <bool is_ad>

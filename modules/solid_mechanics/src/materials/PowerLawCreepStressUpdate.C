@@ -70,6 +70,13 @@ PowerLawCreepStressUpdateTempl<is_ad>::computeStressInitialize(
 }
 
 template <bool is_ad>
+GenericReal<is_ad>
+PowerLawCreepStressUpdateTempl<is_ad>::computeCreepStrainRate(const GenericReal<is_ad> & stress_eq)
+{
+  return _coefficient * std::pow(stress_eq, _n_exponent) * _exponential * _exp_time;
+}
+
+template <bool is_ad>
 template <typename ScalarType>
 ScalarType
 PowerLawCreepStressUpdateTempl<is_ad>::computeResidualInternal(
@@ -93,19 +100,19 @@ PowerLawCreepStressUpdateTempl<is_ad>::computeDerivative(
   return creep_rate_derivative * _dt - 1.0;
 }
 
-template <bool is_ad>
-Real
-PowerLawCreepStressUpdateTempl<is_ad>::computeStrainEnergyRateDensity(
-    const GenericMaterialProperty<RankTwoTensor, is_ad> & stress,
-    const GenericMaterialProperty<RankTwoTensor, is_ad> & strain_rate)
-{
-  if (_n_exponent <= 1)
-    return 0.0;
+// template <bool is_ad>
+// Real
+// PowerLawCreepStressUpdateTempl<is_ad>::computeStrainEnergyRateDensity(
+//     const GenericMaterialProperty<RankTwoTensor, is_ad> & stress,
+//     const GenericMaterialProperty<RankTwoTensor, is_ad> & strain_rate)
+// {
+//   if (_n_exponent <= 1)
+//     return 0.0;
 
-  Real creep_factor = _n_exponent / (_n_exponent + 1);
-
-  return MetaPhysicL::raw_value(creep_factor * stress[_qp].doubleContraction((strain_rate)[_qp]));
-}
+//   Real creep_factor = _n_exponent / (_n_exponent + 1);
+//   return MetaPhysicL::raw_value(creep_factor *
+//   stress[_qp].doubleContraction((strain_rate)[_qp]));
+// }
 
 template <bool is_ad>
 void

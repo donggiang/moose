@@ -29,9 +29,9 @@ public:
 
   PowerLawCreepStressUpdateTempl(const InputParameters & parameters);
 
-  virtual Real computeStrainEnergyRateDensity(
-      const GenericMaterialProperty<RankTwoTensor, is_ad> & stress,
-      const GenericMaterialProperty<RankTwoTensor, is_ad> & strain_rate) override;
+  // virtual Real computeStrainEnergyRateDensity(
+  //     const GenericMaterialProperty<RankTwoTensor, is_ad> & stress,
+  //     const GenericMaterialProperty<RankTwoTensor, is_ad> & strain_rate) override;
 
   virtual bool substeppingCapabilityEnabled() override;
 
@@ -57,6 +57,8 @@ protected:
   {
     return computeResidualInternal<GenericChainedReal<is_ad>>(effective_trial_stress, scalar);
   }
+
+  virtual GenericReal<is_ad> computeCreepStrainRate(const GenericReal<is_ad> & stress_eq) override;
 
   /// Temperature variable value
   const GenericVariableValue<is_ad> * const _temperature;

@@ -30,6 +30,9 @@ protected:
 
   virtual bool substeppingCapabilityEnabled() override;
 
+  virtual GenericReal<is_ad>
+  computeCreepStrainRate(const GenericReal<is_ad> & /*stress_eq*/) override;
+
   enum class ROMInputTransform
   {
     LINEAR,

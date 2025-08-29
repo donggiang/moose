@@ -154,4 +154,6 @@ ComputeMultipleInelasticStress::updateQpState(RankTwoTensor & elastic_strain_inc
     _material_timestep_limit[_qp] = std::numeric_limits<Real>::max();
   else
     _material_timestep_limit[_qp] = 1.0 / _material_timestep_limit[_qp];
+
+  std::cout << "stress: " << _stress[_qp] << "\n";
 }
