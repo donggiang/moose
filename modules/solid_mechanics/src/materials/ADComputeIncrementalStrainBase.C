@@ -34,7 +34,8 @@ ADComputeIncrementalStrainBaseTempl<R2>::ADComputeIncrementalStrainBaseTempl(
     _mechanical_strain_old(
         this->template getMaterialPropertyOld<R2>(_base_name + "mechanical_strain")),
     _total_strain_old(this->template getMaterialPropertyOld<R2>(_base_name + "total_strain")),
-    _eigenstrains_old(_eigenstrain_names.size())
+    _eigenstrains_old(_eigenstrain_names.size()),
+    _grad_disp_rate(this->template declareProperty<RankTwoTensor>(_base_name + "grad_disp_rate"))
 {
   for (unsigned int i = 0; i < _eigenstrains_old.size(); ++i)
     _eigenstrains_old[i] = &this->template getMaterialPropertyOld<R2>(_eigenstrain_names[i]);
