@@ -56,6 +56,8 @@ EshelbyTensorTempl<is_ad>::EshelbyTensorTempl(const InputParameters & parameters
     _stress_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "stress")),
     _grad_disp(3),
     _grad_disp_old(3),
+    _grad_disp_rate(getMaterialProperty<RankTwoTensor>(_base_name + "grad_disp_rate")),
+    _grad_disp_rate_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "grad_disp_rate")),
     _J_thermal_term_vec(declareProperty<RealVectorValue>("J_thermal_term_vec")),
     _grad_temp(coupledGradient("temperature")),
     _has_temp(isCoupled("temperature")),
@@ -119,7 +121,9 @@ EshelbyTensorTempl<is_ad>::computeQpProperties()
   RankTwoTensor FinvT(F.inverse().transpose());
 
   // 1st Piola-Kirchoff Stress (P):
-  RankTwoTensor P = detF * MetaPhysicL::raw_value(_stress[_qp]) * FinvT;
+  //RankTwoTensor P = detF * MetaPhysicL::raw_value(_stress[_qp]) * FinvT;
+  RankTwoTensor P = MetaPhysicL::raw_value(_stress[_qp]) ;
+
 
   // HTP = H^T * P = H^T * detF * sigma * FinvT;
   RankTwoTensor HTP = H.transpose() * P;
@@ -136,13 +140,15 @@ EshelbyTensorTempl<is_ad>::computeQpProperties()
         (*_grad_disp_old[0])[_qp], (*_grad_disp_old[1])[_qp], (*_grad_disp_old[2])[_qp]);
 
     RankTwoTensor Wdot = RankTwoTensor(RankTwoTensor::initIdentity);
-    Wdot *= ((*_serd)[_qp] * detF);
+    //Wdot *= ((*_serd)[_qp] * detF);
+    Wdot *= ((*_serd)[_qp]);
 
     // F_dot = (F - F_old)/dt
     RankTwoTensor F_dot = (H - H_old) / _dt;
 
-    // FdotTP = Fdot^T * P = Fdot^T * detF * sigma * FinvT;
-    RankTwoTensor FdotTP = F_dot.transpose() * P;
+    //RankTwoTensor FdotTP = F_dot.transpose() * P;
+    RankTwoTensor FdotTP = _grad_disp_rate[_qp].transpose() * P;
+
 
     (*_eshelby_tensor_dissipation)[_qp] = Wdot - FdotTP;
   }
