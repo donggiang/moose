@@ -365,16 +365,8 @@ CrackFrontDefinition::initialSetup()
 }
 
 void
-CrackFrontDefinition::initialize()
+CrackFrontDefinition::updateCrackFrontPoints()
 {
-  // Update the crack front for fracture integral calculations
-  // This is only useful for growing cracks which are currently described by the mesh
-  // cutter
-  if (_use_mesh_cutter && _is_cutter_modified)
-  {
-    // Automatically update the number of crack front points as crack grows
-    _num_points_from_provider = _crack_front_points_provider->getNumberOfCrackFrontPoints();
-
     _crack_front_points =
         _crack_front_points_provider->getCrackFrontPoints(_num_points_from_provider);
     updateCrackFrontGeometry();
@@ -385,7 +377,13 @@ CrackFrontDefinition::initialize()
         bool is_point_on_intersecting_boundary = isPointWithIndexOnIntersectingBoundary(i);
         _is_point_on_intersecting_boundary.push_back(is_point_on_intersecting_boundary);
       }
-  }
+}
+
+void
+CrackFrontDefinition::initialize()
+{
+  if (_use_mesh_cutter && _is_cutter_modified)
+    updateCrackFrontPoints();
 }
 
 void
