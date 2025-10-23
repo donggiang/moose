@@ -38,7 +38,15 @@ public:
   virtual void finalize() override;
   virtual void execute() override;
 
-  void updateCrackFrontPoints();
+    /**
+     * Obtain the updated set of crack points from the CrackFrontPointsProvider and 
+     * perform other needed initialization for that set of crack front points. This is only
+     * to be called if a CrackFrontPointsProvider is used.
+     */
+    void updateCrackFrontPoints();
+
+  /// used by Actions to add CrackFrontDefinitionParams
+  static void includeCrackFrontDefinitionParams(InputParameters & params);
 
   /**
    * Change the number of crack front nodes. As the crack grows, the number of crack fronts nodes
