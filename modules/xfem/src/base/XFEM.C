@@ -282,21 +282,24 @@ XFEM::update(Real time,
 
   bool mesh_changed = false;
 
+  std::cout<< "*********XFEM::update, buildEFAMesh 1()\n";
   buildEFAMesh();
-
+  std::cout<< "*********XFEM::update, buildEFAMesh 2()\n";
   _fe_problem->execute(EXEC_XFEM_MARK);
 
   storeCrackTipOriginAndDirection();
 
   if (markCuts(time))
     mesh_changed = cutMeshWithEFA(nl, aux);
-
+  std::cout<< "********XFEM::update, debug 1\n";
   if (mesh_changed)
-  {
+  {  std::cout<< "*********XFEM::update, buildEFAMesh 2 1.1\n";
     buildEFAMesh();
+      std::cout<< "*********XFEM::update, buildEFAMesh 2 1.2\n";
     storeCrackTipOriginAndDirection();
+      std::cout<< "********XFEM::update, debug 1.3\n";
   }
-
+  std::cout<< "********XFEM::update, debug 2\n";
   if (mesh_changed)
   {
     _mesh->allow_renumbering(false);
@@ -310,7 +313,7 @@ XFEM::update(Real time,
       _displaced_mesh->prepare_for_use();
     }
   }
-
+  std::cout<< "********XFEM::update, debug 3\n";
   clearStateMarkedElems();
   clearGeomMarkedElems();
 
@@ -352,14 +355,14 @@ void
 XFEM::buildEFAMesh()
 {
   _efa_mesh.reset();
-
+  //    std::cout<< "********XFEM::buildEFAMesh, debug 1\n";
   // Load all existing elements in to EFA mesh
   for (auto & elem : _mesh->element_ptr_range())
   {
     std::vector<unsigned int> quad;
     for (unsigned int i = 0; i < elem->n_nodes(); ++i)
       quad.push_back(elem->node_id(i));
-
+   //   std::cout<< "********XFEM::buildEFAMesh, debug 1.1\n";
     if (_mesh->mesh_dimension() == 2)
       _efa_mesh.add2DElement(quad, elem->id());
     else if (_mesh->mesh_dimension() == 3)
@@ -367,7 +370,7 @@ XFEM::buildEFAMesh()
     else
       mooseError("XFEM only works for 2D and 3D");
   }
-
+   //   std::cout<< "********XFEM::buildEFAMesh, debug 2\n";
   // Restore fragment information for elements that have been previously cut
   for (auto & elem : _mesh->element_ptr_range())
   {
@@ -379,12 +382,14 @@ XFEM::buildEFAMesh()
       _efa_mesh.restoreFragmentInfo(CEMElem, xfce->getEFAElement());
     }
   }
-
+      std::cout<< "********XFEM::buildEFAMesh, debug 3\n";
   // Must update edge neighbors before restore edge intersections. Otherwise, when we
   // add edge intersections, we do not have neighbor information to use.
   // Correction: no need to use neighbor info now
   _efa_mesh.updateEdgeNeighbors();
+      std::cout<< "********XFEM::buildEFAMesh, debug 4\n";
   _efa_mesh.initCrackTipTopology();
+        std::cout<< "********XFEM::buildEFAMesh, debug 5\n";
 }
 
 bool

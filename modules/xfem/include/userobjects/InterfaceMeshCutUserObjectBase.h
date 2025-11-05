@@ -64,7 +64,7 @@ public:
    */
   virtual void calculateNormals() = 0;
 
-  virtual CutSubdomainID getCutSubdomainID(const Node * node) const override;
+  virtual CutSubdomainID getCutSubdomainID(const Node * node) const;
 
 protected:
   /// The cutter mesh

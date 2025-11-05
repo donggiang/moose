@@ -51,6 +51,13 @@ public:
 
   bool isPointOnEdgeBoundary(const Point & point, Real tolerance = 1e-10);
 
+  virtual CutSubdomainID getCutSubdomainID(const Node * node) const;
+
+  virtual Real calculateSignedDistance(Point p) const
+  {
+    return 0;
+  }
+
 protected:
   /// The FE solution mesh
   MooseMesh & _mesh;

@@ -170,24 +170,29 @@ ElementFragmentAlgorithm::add3DElement(const std::vector<unsigned int> & quad, u
 void
 ElementFragmentAlgorithm::updateEdgeNeighbors()
 {
+  //std::cout<<"******ElementFragmentAlgorithm::updateEdgeNeighbors, debug 1\n";
   std::map<unsigned int, EFAElement *>::iterator eit;
   for (eit = _elements.begin(); eit != _elements.end(); ++eit)
   {
     EFAElement * elem = eit->second;
     elem->clearNeighbors();
   }
-
+  //std::cout<<"******ElementFragmentAlgorithm::updateEdgeNeighbors, debug 2\n";
   for (eit = _elements.begin(); eit != _elements.end(); ++eit)
   {
+     // std::cout<<"******ElementFragmentAlgorithm::updateEdgeNeighbors, debug 2.1\n";
     EFAElement * curr_elem = eit->second;
+      std::cout<<"******ElementFragmentAlgorithm::updateEdgeNeighbors, debug 2.2\n";
     curr_elem->setupNeighbors(_inverse_connectivity);
+      std::cout<<"******ElementFragmentAlgorithm::updateEdgeNeighbors, debug 2.3\n";
   } // loop over all elements
-
+  std::cout<<"******ElementFragmentAlgorithm::updateEdgeNeighbors, debug 3\n";
   for (eit = _elements.begin(); eit != _elements.end(); ++eit)
   {
     EFAElement * curr_elem = eit->second;
     curr_elem->neighborSanityCheck();
   }
+    std::cout<<"******ElementFragmentAlgorithm::updateEdgeNeighbors, debug 4\n";
 }
 
 void

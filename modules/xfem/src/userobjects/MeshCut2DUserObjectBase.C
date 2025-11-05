@@ -60,6 +60,14 @@ MeshCut2DUserObjectBase::initialSetup()
   _crack_front_definition = &_fe_problem.getUserObject<CrackFrontDefinition>(uo_name);
 }
 
+CutSubdomainID
+MeshCut2DUserObjectBase::getCutSubdomainID(const Node * node) const
+{
+  std::cout<< "MeshCut2DUserObjectBase::getCutSubdomainID\n ";
+  return  this->calculateSignedDistance(*node) > 0.0 ? 2:1;
+}
+
+
 bool
 MeshCut2DUserObjectBase::cutElementByGeometry(const Elem * elem,
                                               std::vector<Xfem::CutEdge> & cut_edges,

@@ -474,24 +474,45 @@ EFAElement2D::setupNeighbors(std::map<EFANode *, std::set<EFAElement *>> & inver
   findGeneralNeighbors(inverse_connectivity_map);
   for (unsigned int eit2 = 0; eit2 < _general_neighbors.size(); ++eit2)
   {
+     std::cout<<"*************EFAElement2D::setupNeighbors, debug -1\n";
     EFAElement2D * neigh_elem = dynamic_cast<EFAElement2D *>(_general_neighbors[eit2]);
+ std::cout<<"*************EFAElement2D::setupNeighbors, debug 1\n";
     if (!neigh_elem)
       EFAError("neighbor_elem is not of EFAelement2D type");
-
+ std::cout<<"*************EFAElement2D::setupNeighbors, debug 2\n";
     std::vector<EFANode *> common_nodes = getCommonNodes(neigh_elem);
+     std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.0.m2\n";
+     std::cout<<"*************EFAElement2D::setupNeighbors, common_nodes size:"<< common_nodes.size() <<"\n";
     if (common_nodes.size() >= 2)
     {
+      std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.0.m22\n";
       for (unsigned int edge_iter = 0; edge_iter < _num_edges; ++edge_iter)
       {
-        std::set<EFANode *> edge_nodes = getEdgeNodes(edge_iter);
-        bool is_edge_neighbor = false;
+        // if (edge_iter >= _edges.size() || !_edges[edge_iter])
+        //   continue;
+        // std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.0.m1\n";
+        // std::set<EFANode *> edge_nodes = getEdgeNodes(edge_iter);
 
+        if (edge_iter >= _edges.size() || !_edges[edge_iter])
+          continue;
+
+        std::set<EFANode *> edge_nodes = getEdgeNodes(edge_iter);
+        if (edge_nodes.size() < 2)
+          continue;
+
+        bool is_edge_neighbor = false;
+        std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.0\n";
         // Must share nodes on this edge
         if (Efa::numCommonElems(edge_nodes, common_nodes) == 2 && (!overlaysElement(neigh_elem)))
         {
+          std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.0.1\n";
           // Fragments must match up.
           if ((_fragments.size() > 1) || (neigh_elem->numFragments() > 1))
+          {
+            std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.0.2\n";
             EFAError("in updateEdgeNeighbors: Cannot have more than 1 fragment");
+            std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.0.3\n";
+          }
           else if ((_fragments.size() == 1) && (neigh_elem->numFragments() == 1))
           {
             if (_fragments[0]->isConnected(neigh_elem->getFragment(0)))
@@ -500,27 +521,37 @@ EFAElement2D::setupNeighbors(std::map<EFANode *, std::set<EFAElement *>> & inver
           else // If there are no fragments to match up, consider them neighbors
             is_edge_neighbor = true;
         }
-
+        std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.1\n";
         if (is_edge_neighbor)
         {
+          std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.1.1\n";
           if (_edge_neighbors[edge_iter][0])
           {
+             std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.2, " << _edge_neighbors[edge_iter].size() << "\n";
             if (_edge_neighbors[edge_iter].size() > 1)
             {
+              std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.2.1\n";
               EFAError("Element ",
                        _id,
                        " already has 2 edge neighbors: ",
                        _edge_neighbors[edge_iter][0]->id(),
                        " ",
                        _edge_neighbors[edge_iter][1]->id());
+              std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.2.2\n";
             }
+            std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.2.2.1\n";
             _edge_neighbors[edge_iter].push_back(neigh_elem);
+            std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.2.3\n";
           }
           else
+          {
             _edge_neighbors[edge_iter][0] = neigh_elem;
+             std::cout<<"*************EFAElement2D::setupNeighbors, debug 2.3\n";
+          }
         }
       }
     }
+     std::cout<<"*************EFAElement2D::setupNeighbors, debug 3\n";
   }
 }
 
@@ -1398,12 +1429,28 @@ EFAElement2D::getFragment(unsigned int frag_id) const
     EFAError("frag_id out of bounds");
 }
 
+// std::set<EFANode *>
+// EFAElement2D::getEdgeNodes(unsigned int edge_id) const
+// {
+//   std::set<EFANode *> edge_nodes;
+//   edge_nodes.insert(_edges[edge_id]->getNode(0));
+//   edge_nodes.insert(_edges[edge_id]->getNode(1));
+//   return edge_nodes;
+// }
 std::set<EFANode *>
 EFAElement2D::getEdgeNodes(unsigned int edge_id) const
 {
   std::set<EFANode *> edge_nodes;
-  edge_nodes.insert(_edges[edge_id]->getNode(0));
-  edge_nodes.insert(_edges[edge_id]->getNode(1));
+  if (edge_id >= _edges.size() || !_edges[edge_id])
+    return edge_nodes;
+
+  EFANode * first = _edges[edge_id]->getNode(0);
+  EFANode * second = _edges[edge_id]->getNode(1);
+  if (!first || !second)
+    return edge_nodes;
+
+  edge_nodes.insert(first);
+  edge_nodes.insert(second);
   return edge_nodes;
 }
 

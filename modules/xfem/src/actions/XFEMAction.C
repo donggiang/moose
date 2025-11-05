@@ -82,6 +82,9 @@ XFEMAction::validParams()
   params.addParam<Real>("cut_off_radius",
                         "The cut off radius of crack tip enrichment functions (only needed if "
                         "'use_crack_tip_enrichment=true')");
+  params.addParam<std::vector<SubdomainName>>("block",
+                        {},
+                        "Block id used for the enriched domain");
   params.addClassDescription("Action to input general parameters and simulation options for use "
                              "in XFEM.");
   return params;
@@ -94,7 +97,8 @@ XFEMAction::XFEMAction(const InputParameters & params)
     _xfem_cut_plane(false),
     _xfem_use_crack_growth_increment(getParam<bool>("use_crack_growth_increment")),
     _xfem_crack_growth_increment(getParam<Real>("crack_growth_increment")),
-    _use_crack_tip_enrichment(getParam<bool>("use_crack_tip_enrichment"))
+    _use_crack_tip_enrichment(getParam<bool>("use_crack_tip_enrichment")),
+    _block_id(getParam<std::vector<SubdomainName>>("block"))
 {
   _order = "CONSTANT";
   _family = "MONOMIAL";
@@ -168,6 +172,8 @@ XFEMAction::act()
     auto var_params = _factory.getValidParams("MooseVariable");
     var_params.set<MooseEnum>("family") = "LAGRANGE";
     var_params.set<MooseEnum>("order") = "FIRST";
+    if (_block_id.size() > 0)
+      var_params.set<std::vector<SubdomainName>>("block") = _block_id;
 
     for (const auto & enrich_disp : _enrich_displacements)
       _problem->addVariable("MooseVariable", enrich_disp, var_params);
@@ -183,6 +189,8 @@ XFEMAction::act()
       params.set<UserObjectName>("crack_front_definition") = _crack_front_definition;
       params.set<std::vector<VariableName>>("enrichment_displacements") = _enrich_displacements;
       params.set<std::vector<VariableName>>("displacements") = _displacements;
+      if (_block_id.size() > 0)
+        params.set<std::vector<SubdomainName>>("block") = _block_id;
       _problem->addKernel(
           "CrackTipEnrichmentStressDivergenceTensors", _enrich_displacements[i], params);
     }
@@ -197,6 +205,7 @@ XFEMAction::act()
       params.set<std::vector<BoundaryName>>("boundary") = _cut_off_bc;
       params.set<Real>("cut_off_radius") = _cut_off_radius;
       params.set<UserObjectName>("crack_front_definition") = _crack_front_definition;
+      //TODO: Deal with block restriction for the boundary
       _problem->addBoundaryCondition(
           "CrackTipEnrichmentCutOffBC", _enrich_displacements[i], params);
     }

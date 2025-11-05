@@ -194,3 +194,53 @@ MeshCut2DFractureUserObject::findActiveBoundaryGrowth()
     }
   }
 }
+
+
+Real
+MeshCut2DFractureUserObject::calculateSignedDistance(Point p) const
+{
+  Real min_dist = std::numeric_limits<Real>::max();
+
+  for (const auto & cut_elem : _cutter_mesh->element_ptr_range())
+  {
+    Point a = cut_elem->node_ref(0);
+    Point b = cut_elem->node_ref(1);
+
+    Point c = p - a;
+    Point v = (b - a) / (b - a).norm();
+    Real d = (b - a).norm();
+    Real t = v * c;
+
+    Real dist;
+    Point nearest_point;
+
+    if (t < 0)
+    {
+      dist = (p - a).norm();
+      nearest_point = a;
+    }
+    else if (t > d)
+    {
+      dist = (p - b).norm();
+      nearest_point = b;
+    }
+    else
+    {
+      v *= t;
+      dist = (p - a - v).norm();
+      nearest_point = (a + v);
+    }
+
+    Point p_nearest_point = nearest_point - p;
+
+    Point normal_ab = Point(-(b - a)(1), (b - a)(0), 0);
+
+    if (normal_ab * p_nearest_point < 0)
+      dist = -dist;
+
+    if (std::abs(dist) < std::abs(min_dist))
+      min_dist = dist;
+  }
+
+  return min_dist;
+}

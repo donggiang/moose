@@ -28,6 +28,7 @@ public:
   virtual void initialize() override;
 
   virtual bool isCutterMeshChanged() const override;
+  virtual Real calculateSignedDistance(Point p) const;
 
 protected:
   virtual void findActiveBoundaryGrowth() override;

@@ -38,9 +38,9 @@ public:
   void rotateFromCrackFrontCoordsToGlobal(const RealVectorValue & vector,
                                           RealVectorValue & rotated_vector,
                                           const unsigned int point_index);
+  const CrackFrontDefinition & _crack_front_definition;
 
 private:
-  const CrackFrontDefinition & _crack_front_definition;
   Real _r;
   Real _theta;
 };
