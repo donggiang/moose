@@ -97,7 +97,8 @@ XFEMAction::XFEMAction(const InputParameters & params)
     _xfem_cut_plane(false),
     _xfem_use_crack_growth_increment(getParam<bool>("use_crack_growth_increment")),
     _xfem_crack_growth_increment(getParam<Real>("crack_growth_increment")),
-    _use_crack_tip_enrichment(getParam<bool>("use_crack_tip_enrichment"))
+    _use_crack_tip_enrichment(getParam<bool>("use_crack_tip_enrichment")),
+    _block_id(getParam<std::vector<SubdomainName>>("block"))
 {
   _order = "CONSTANT";
   _family = "MONOMIAL";
@@ -172,8 +173,11 @@ XFEMAction::act()
     var_params.set<MooseEnum>("family") = "LAGRANGE";
     var_params.set<MooseEnum>("order") = "FIRST";
 
+    if (_block_id.size() > 0)
+        var_params.set<std::vector<SubdomainName>>("block") = _block_id;
     for (const auto & enrich_disp : _enrich_displacements)
-      _problem->addVariable("MooseVariable", enrich_disp, var_params);
+        _problem->addVariable("MooseVariable", enrich_disp, var_params);
+
   }
   else if (_current_task == "add_kernel" && _use_crack_tip_enrichment)
   {
@@ -187,11 +191,10 @@ XFEMAction::act()
       params.set<std::vector<VariableName>>("enrichment_displacements") = _enrich_displacements;
       params.set<std::vector<VariableName>>("displacements") = _displacements;
 	    if (_block_id.size() > 0)
-      {
         params.set<std::vector<SubdomainName>>("block") = _block_id;
-        _problem->addKernel(
+      _problem->addKernel(
           "CrackTipEnrichmentStressDivergenceTensors", _enrich_displacements[i], params);
-      }
+    
     }
   }
   // else if (_current_task == "add_bc" && _use_crack_tip_enrichment)

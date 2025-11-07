@@ -27,6 +27,12 @@
 	protected:
 	  virtual SubdomainID computeSubdomainID() override;
 	private:
-
+	  /// Target subdomain for cut or crack-tip elements
+	  SubdomainID _cut_subdomain_id;
+	  /// XFEM controller used to query cut and crack-tip status
 	  std::shared_ptr<XFEM> _xfem;
-	};
+	  // /// Original subdomain id for each element (keyed by unique id)
+	  // std::unordered_map<libMesh::unique_id_type, SubdomainID> _original_subdomain_ids;
+	  // /// Mutex to protect access to the original subdomain map in threaded execution
+	  // mutable libMesh::Threads::spin_mutex _original_subdomain_mutex;
+};

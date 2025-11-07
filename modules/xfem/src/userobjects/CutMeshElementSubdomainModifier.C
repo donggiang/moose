@@ -18,13 +18,13 @@
 	  params.addClassDescription(
 	      "Change element subdomain when the element is cut by the XFEM cutter mesh or located at a "
 	      "crack tip.");
-	  // params.addRequiredParam<SubdomainID>(
-	  //     "cut_subdomain_id", "Subdomain ID assigned to elements cut by the cutter mesh.");
+	  params.addRequiredParam<SubdomainID>(
+	      "cut_subdomain_id", "Subdomain ID assigned to elements cut by the cutter mesh.");
 	  return params;
 	}
 	CutMeshElementSubdomainModifier::CutMeshElementSubdomainModifier(const InputParameters & parameters)
-	  : ElementSubdomainModifier(parameters)
-	   // _cut_subdomain_id(getParam<SubdomainID>("cut_subdomain_id"))
+	  : ElementSubdomainModifier(parameters),
+	    _cut_subdomain_id(getParam<SubdomainID>("cut_subdomain_id"))
 	{
 	  auto * fe_problem = dynamic_cast<FEProblemBase *>(&_subproblem);
 	  if (!fe_problem)
@@ -39,7 +39,8 @@
 	{
 	  //if (_xfem->isElemCut(_current_elem) || _xfem->isElemAtCrackTip(_current_elem))
 	  if ( _xfem->isElemAtCrackTip(_current_elem))
-	    return 2;
+	    _cut_subdomain_id=2;
 	  else
-	    return 1;
+	    _cut_subdomain_id=1;
+	  return _cut_subdomain_id;
 }
