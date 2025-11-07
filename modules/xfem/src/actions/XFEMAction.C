@@ -75,13 +75,16 @@ XFEMAction::validParams()
   params.addParam<std::vector<VariableName>>("enrichment_displacements",
                                              "Names of enrichment displacement variables (only "
                                              "needed if 'use_crack_tip_enrichment=true')");
-  params.addParam<std::vector<BoundaryName>>("cut_off_boundary",
-                                             "Boundary that contains all nodes for which "
-                                             "enrichment DOFs should be fixed away from crack tip "
-                                             "(only needed if 'use_crack_tip_enrichment=true')");
-  params.addParam<Real>("cut_off_radius",
-                        "The cut off radius of crack tip enrichment functions (only needed if "
-                        "'use_crack_tip_enrichment=true')");
+  // params.addParam<std::vector<BoundaryName>>("cut_off_boundary",
+  //                                            "Boundary that contains all nodes for which "
+  //                                            "enrichment DOFs should be fixed away from crack tip "
+  //                                            "(only needed if 'use_crack_tip_enrichment=true')");
+  // params.addParam<Real>("cut_off_radius",
+  //                       "The cut off radius of crack tip enrichment functions (only needed if "
+  //                       "'use_crack_tip_enrichment=true')");
+	  params.addParam<std::vector<SubdomainName>>("block",
+	                        {},
+                        "Block id used for the enriched domain");
   params.addClassDescription("Action to input general parameters and simulation options for use "
                              "in XFEM.");
   return params;
@@ -124,15 +127,15 @@ XFEMAction::XFEMAction(const InputParameters & params)
     else
       mooseError("To add crack tip enrichment, enrichment_displacements must be provided.");
 
-    if (isParamValid("cut_off_boundary"))
-      _cut_off_bc = getParam<std::vector<BoundaryName>>("cut_off_boundary");
-    else
-      mooseError("To add crack tip enrichment, cut_off_boundary must be provided.");
+    // if (isParamValid("cut_off_boundary"))
+    //   _cut_off_bc = getParam<std::vector<BoundaryName>>("cut_off_boundary");
+    // else
+    //   mooseError("To add crack tip enrichment, cut_off_boundary must be provided.");
 
-    if (isParamValid("cut_off_radius"))
-      _cut_off_radius = getParam<Real>("cut_off_radius");
-    else
-      mooseError("To add crack tip enrichment, cut_off_radius must be provided.");
+    // if (isParamValid("cut_off_radius"))
+    //   _cut_off_radius = getParam<Real>("cut_off_radius");
+    // else
+    //   mooseError("To add crack tip enrichment, cut_off_radius must be provided.");
   }
 }
 
@@ -183,24 +186,28 @@ XFEMAction::act()
       params.set<UserObjectName>("crack_front_definition") = _crack_front_definition;
       params.set<std::vector<VariableName>>("enrichment_displacements") = _enrich_displacements;
       params.set<std::vector<VariableName>>("displacements") = _displacements;
-      _problem->addKernel(
+	    if (_block_id.size() > 0)
+      {
+        params.set<std::vector<SubdomainName>>("block") = _block_id;
+        _problem->addKernel(
           "CrackTipEnrichmentStressDivergenceTensors", _enrich_displacements[i], params);
+      }
     }
   }
-  else if (_current_task == "add_bc" && _use_crack_tip_enrichment)
-  {
-    for (unsigned int i = 0; i < _enrich_displacements.size(); ++i)
-    {
-      InputParameters params = _factory.getValidParams("CrackTipEnrichmentCutOffBC");
-      params.set<NonlinearVariableName>("variable") = _enrich_displacements[i];
-      params.set<Real>("value") = 0;
-      params.set<std::vector<BoundaryName>>("boundary") = _cut_off_bc;
-      params.set<Real>("cut_off_radius") = _cut_off_radius;
-      params.set<UserObjectName>("crack_front_definition") = _crack_front_definition;
-      _problem->addBoundaryCondition(
-          "CrackTipEnrichmentCutOffBC", _enrich_displacements[i], params);
-    }
-  }
+  // else if (_current_task == "add_bc" && _use_crack_tip_enrichment)
+  // {
+  //   for (unsigned int i = 0; i < _enrich_displacements.size(); ++i)
+  //   {
+  //     InputParameters params = _factory.getValidParams("CrackTipEnrichmentCutOffBC");
+  //     params.set<NonlinearVariableName>("variable") = _enrich_displacements[i];
+  //     params.set<Real>("value") = 0;
+  //     params.set<std::vector<BoundaryName>>("boundary") = _cut_off_bc;
+  //     params.set<Real>("cut_off_radius") = _cut_off_radius;
+  //     params.set<UserObjectName>("crack_front_definition") = _crack_front_definition;
+  //     _problem->addBoundaryCondition(
+  //         "CrackTipEnrichmentCutOffBC", _enrich_displacements[i], params);
+  //   }
+  // }
   else if (_current_task == "add_aux_variable" && _xfem_cut_plane)
   {
     auto var_params = _factory.getValidParams("MooseVariableConstMonomial");
