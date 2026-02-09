@@ -34,5 +34,14 @@ CrackTipEnrichmentCutOffBC::CrackTipEnrichmentCutOffBC(const InputParameters & p
 bool
 CrackTipEnrichmentCutOffBC::shouldApply() const
 {
-  return true;
+  if (_cut_off_radius == 0)
+    return true;
+
+  Real r, theta;
+  _crack_front_definition.calculateRThetaToCrackFront((*_current_node), r, theta);
+
+  if (r > _cut_off_radius && _cut_off_radius > 0)
+    return true;
+  else
+    return false;
 }
