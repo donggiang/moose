@@ -195,6 +195,8 @@ public:
                    unsigned int plane_id) const;
 
   bool isElemAtCrackTip(const Elem * elem) const;
+
+  bool isElemCrackTipSplit(const Elem * elem);
   bool isElemCut(const Elem * elem, XFEMCutElem *& xfce) const;
   bool isElemCut(const Elem * elem) const;
   void getFragmentFaces(const Elem * elem,
@@ -226,6 +228,12 @@ public:
    */
   void setDebugOutputLevel(unsigned int debug_output_level);
 
+  /**
+   * Print a concise view of the current EFA and libMesh element connectivity
+   * to the supplied stream for debugging.
+   */
+  void printElementConnectivity(std::ostream & os = Moose::out);
+  
   /**
    * Controls the minimum average weight multiplier for each element
    * @param min_weight_multiplier The minimum average weight multiplier applied

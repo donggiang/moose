@@ -281,7 +281,6 @@ XFEM::update(Real time,
     mooseError("Use of XFEM with distributed mesh is not yet supported");
 
   bool mesh_changed = false;
-
   buildEFAMesh();
 
   _fe_problem->execute(EXEC_XFEM_MARK);
@@ -313,7 +312,6 @@ XFEM::update(Real time,
 
   clearStateMarkedElems();
   clearGeomMarkedElems();
-
   return mesh_changed;
 }
 
@@ -1111,6 +1109,22 @@ XFEM::healMesh()
 
   return mesh_changed;
 }
+void
+XFEM::printElementConnectivity(std::ostream & os)
+{
+  os << "EFA mesh connectivity (ElementFragmentAlgorithm):" << std::endl;
+  _efa_mesh.printMesh();
+
+  os << "libMesh active element connectivity:" << std::endl;
+  for (const auto & elem : _mesh->active_element_ptr_range())
+  {
+    os << "  Elem " << elem->id() << " block " << elem->subdomain_id() << " nodes:";
+    for (unsigned int i = 0; i < elem->n_nodes(); ++i)
+      os << ' ' << elem->node_id(i);
+
+    os << " centroid " << elem->centroid() << std::endl;
+  }
+}
 
 bool
 XFEM::cutMeshWithEFA(const std::vector<std::shared_ptr<NonlinearSystemBase>> & nls,
@@ -1405,18 +1419,26 @@ XFEM::cutMeshWithEFA(const std::vector<std::shared_ptr<NonlinearSystemBase>> & n
       if (_material_data[0]->getMaterialPropertyStorage().hasStatefulProperties())
         _material_data[0]->copy(*libmesh_elem, *parent_elem, 0);
 
-      if (_bnd_material_data[0]->getMaterialPropertyStorage().hasStatefulProperties())
-        for (unsigned int side = 0; side < parent_elem->n_sides(); ++side)
-        {
-          _mesh->get_boundary_info().boundary_ids(parent_elem, side, parent_boundary_ids);
-          std::vector<boundary_id_type>::iterator it_bd = parent_boundary_ids.begin();
-          for (; it_bd != parent_boundary_ids.end(); ++it_bd)
-          {
-            if (_fe_problem->needBoundaryMaterialOnSide(*it_bd, 0))
-              _bnd_material_data[0]->copy(*libmesh_elem, *parent_elem, side);
-          }
-        }
-
+      /*need to comment out the below lines to avoid checking material state on boundaries!!!!!*/
+        // if (_bnd_material_data[0]->getMaterialPropertyStorage().hasStatefulProperties())
+      // {
+      //   std::cout<<"*************** XFEM::cutMeshWithEFA(), debug 1.2.1\n";
+      //   for (unsigned int side = 0; side < parent_elem->n_sides(); ++side)
+      //   {
+      //     _mesh->get_boundary_info().boundary_ids(parent_elem, side, parent_boundary_ids);
+      //     std::cout<<"*************** XFEM::cutMeshWithEFA(), debug 1.2.2\n";
+      //     std::vector<boundary_id_type>::iterator it_bd = parent_boundary_ids.begin();
+      //     for (; it_bd != parent_boundary_ids.end(); ++it_bd)
+      //     {
+      //       if (_fe_problem->needBoundaryMaterialOnSide(*it_bd, 0))
+      //       {
+      //         std::cout<<"*************** XFEM::cutMeshWithEFA(), debug 1.2.3\n";
+      //         _bnd_material_data[0]->copy(*libmesh_elem, *parent_elem, side);
+      //         std::cout<<"*************** XFEM::cutMeshWithEFA(), debug 1.2.4\n";
+      //       }
+      //     }
+      //   }
+      // }
       // Store the current information about the geometrically cut element, and load cached material
       // properties into the new child element, if any.
       const GeometricCutUserObject * gcuo = getGeometricCutForElem(parent_elem);
@@ -1439,7 +1461,6 @@ XFEM::cutMeshWithEFA(const std::vector<std::shared_ptr<NonlinearSystemBase>> & n
             break;
           }
       }
-
       // Store solution for all elements affected by XFEM
       storeSolutionForElement(libmesh_elem,
                               parent_elem,
@@ -1457,7 +1478,6 @@ XFEM::cutMeshWithEFA(const std::vector<std::shared_ptr<NonlinearSystemBase>> & n
                               older_aux_solution);
     }
   }
-
   // delete elements
   for (std::size_t i = 0; i < delete_elements.size(); ++i)
   {
@@ -1715,6 +1735,30 @@ bool
 XFEM::isElemAtCrackTip(const Elem * elem) const
 {
   return (_crack_tip_elems.find(elem) != _crack_tip_elems.end());
+}
+
+bool
+XFEM::isElemCrackTipSplit(const Elem * elem)
+{
+  EFAElement * efa_elem = _efa_mesh.getElemByID(elem->id());
+  if (!efa_elem)
+    return false;
+
+  if (_mesh->mesh_dimension() == 2)
+  {
+    if (const auto * efa_elem2d = dynamic_cast<const EFAElement2D *>(efa_elem))
+      return efa_elem2d->isCrackTipSplit();
+    return false;
+  }
+
+  if (_mesh->mesh_dimension() == 3)
+  {
+    if (const auto * efa_elem3d = dynamic_cast<const EFAElement3D *>(efa_elem))
+      return efa_elem3d->isCrackTipSplit();
+    return false;
+  }
+
+  return false;
 }
 
 bool
