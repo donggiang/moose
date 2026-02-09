@@ -2389,6 +2389,7 @@ public:
    * Convenience function for performing execution of MOOSE systems.
    */
   virtual void execute(const ExecFlagType & exec_type);
+  void executeXFEM(const ExecFlagType & exec_type);
   virtual void executeAllObjects(const ExecFlagType & exec_type);
 
   virtual Executor & getExecutor(const std::string & name) { return _app.getExecutor(name); }

@@ -137,10 +137,7 @@
 #include "libmesh/petsc_solver_exception.h"
 
 #include "metaphysicl/dualnumber.h"
-
-// C++
-#include <cstring> // for "Jacobian" exception test
-
+#include "SolidMechanicsAppTypes.h"
 using namespace libMesh;
 
 // Anonymous namespace for helper function
@@ -1322,7 +1319,9 @@ FEProblemBase::initialSetup()
   if (!_app.isRecovering())
   {
     if (haveXFEM())
+    {
       updateMeshXFEM();
+    }
   }
 
   // Call initialSetup on the solver systems
@@ -8655,12 +8654,15 @@ FEProblemBase::updateMeshXFEM()
   {
     crack_front_advanced = _xfem->didNearTipEnrichmentChange();
     if (crack_front_advanced)
+    {
       _console << "\nXFEM update complete: Mesh not modified but advancing crack changed near-tip "
                   "enrichment"
                << std::endl;
+    }
     else
       _console << "\nXFEM update complete: Mesh not modified" << std::endl;
   }
+  execute(EXEC_XFEM_SUBDOMAIN_MODIFIER);
   return (updated || crack_front_advanced);
 }
 

@@ -14,3 +14,4 @@
 /// Exec flag used to execute MooseObjects while elements are being
 /// marked for cutting by XFEM
 extern const ExecFlagType EXEC_XFEM_MARK;
+extern const ExecFlagType EXEC_XFEM_SUBDOMAIN_MODIFIER;
