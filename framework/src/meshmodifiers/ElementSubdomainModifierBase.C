@@ -306,19 +306,19 @@ ElementSubdomainModifierBase::initialSetup()
 void
 ElementSubdomainModifierBase::timestepSetup()
 {
-  if (_t_step == _t_step_old && !_skip_restore_subdomain_changes)
-  {
-    mooseInfoRepeated(name(), ": Restoring element subdomain changes.");
+  // if (_t_step == _t_step_old && !_skip_restore_subdomain_changes)
+  // {
+  //   mooseInfoRepeated(name(), ": Restoring element subdomain changes.");
 
-    // Reverse the subdomain changes
-    auto moved_elem_reversed = _moved_elems;
-    for (auto & [elem_id, subdomain] : moved_elem_reversed)
-      std::swap(subdomain.first, subdomain.second);
+  //   // Reverse the subdomain changes
+  //   auto moved_elem_reversed = _moved_elems;
+  //   for (auto & [elem_id, subdomain] : moved_elem_reversed)
+  //     std::swap(subdomain.first, subdomain.second);
 
-    _restep = true;
-    modify(moved_elem_reversed);
-    _restep = false;
-  }
+  //   _restep = true;
+  //   modify(moved_elem_reversed);
+  //   _restep = false;
+  // }
 
   _t_step_old = _t_step;
 }

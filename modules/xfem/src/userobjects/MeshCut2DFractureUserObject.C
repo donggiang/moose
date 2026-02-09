@@ -102,6 +102,8 @@ MeshCut2DFractureUserObject::initialize()
   _crack_front_definition->isCutterModified(_is_mesh_modified);
   if (_is_mesh_modified)
     _crack_front_definition->updateCrackFrontPoints();
+
+  std::vector<Point> p = getCrackFrontPoints(1);
 }
 
 bool
@@ -159,39 +161,40 @@ MeshCut2DFractureUserObject::findActiveBoundaryGrowth()
       Real k_squared = _ki_vpp->at(i) * _ki_vpp->at(i) + _kii_vpp->at(i) * _kii_vpp->at(i);
       if (k_squared > (k_crit * k_crit) && _ki_vpp->at(i) > 0)
       {
-        // growth direction in crack front coord (cfc) system based on the max hoop stress criterion
-        // Jiang, Wen, Benjamin W.Spencer, and John E.Dolbow.
-        // "Ceramic nuclear fuel fracture modeling with the extended finite "
-        // "element method." Engineering Fracture Mechanics 223(2020):106713.
-        // https://doi.org/10.1016/j.engfracmech.2019.106713
-        // Equation 6
+        //     std::cout<< "*** findActiveBoundaryGrowth(), debug 2\n";
+        was_crack_extended_kcrit = true;
+        // growth direction in crack front coord (cfc) system based on the  max hoop stress
+        // criterion
         Real ki = _ki_vpp->at(i);
         Real kii = _kii_vpp->at(i);
-        Real sqrt_k = std::sqrt(ki * ki + 8 * kii * kii);
 
-        Real theta_m = 0;
-        Real theta_p = 0;
-        if (std::abs(kii) > libMesh::TOLERANCE)
+        Real theta = 0.0;
+
+        // scale-aware tolerance (tune if you like)
+        const Real k_norm = std::sqrt(ki * ki + kii * kii);
+        const Real eps = std::max(1e-14, 1e-12 * k_norm);
+
+        if (std::abs(kii) < eps || k_norm < eps)
         {
-          theta_m = 2 * std::atan((ki - sqrt_k) / (4 * kii));
-          theta_p = 2 * std::atan((ki + sqrt_k) / (4 * kii));
+          // Pure Mode I (or essentially no driving): go straight
+          theta = 0.0;
+        }
+        else
+        {
+          // Use stable branch selection via sign(KII)
+          const Real sgn = (kii >= 0.0) ? 1 : -1;
+          const Real r = ki / kii; // safe because |kii| >= eps
+          Real sqrt_k = std::sqrt(ki * ki + 8 * kii * kii);
+
+          // const Real a = 0.25 * (r - root); // stable expression
+          theta = 2 * std::atan((ki + sgn * sqrt_k) / (4 * kii));
         }
 
-        // Equation 5 check relative sigma_tt
-        Real sigma_tt_m = ki * (3 * std::cos(theta_m / 2) + std::cos(3 * theta_m / 2)) +
-                          kii * (-3 * std::sin(theta_m / 2) - 3 * std::sin(3 * theta_m / 2));
-        Real sigma_tt_p = ki * (3 * std::cos(theta_p / 2) + std::cos(3 * theta_p / 2)) +
-                          kii * (-3 * std::sin(theta_p / 2) - 3 * std::sin(3 * theta_p / 2));
-        Real theta;
-        if (sigma_tt_m > sigma_tt_p)
-          theta = theta_m;
-        else
-          theta = theta_p;
-
+        // direction from angle
         RealVectorValue dir_cfc;
         dir_cfc(0) = std::cos(theta);
         dir_cfc(1) = std::sin(theta);
-        dir_cfc(2) = 0;
+        dir_cfc(2) = 0.0;
 
         // growth direction in global coord system based on the max hoop stress criterion
         RealVectorValue dir_global =

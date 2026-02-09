@@ -29,6 +29,14 @@ public:
 
   virtual bool isCutterMeshChanged() const override;
 
+  inline double sign(double x, double tol = 1e-12)
+{
+    if (x > tol)
+        return 1.0;
+    if (x < -tol)
+        return -1.0;
+    return 0.0;
+}
 protected:
   virtual void findActiveBoundaryGrowth() override;
 
