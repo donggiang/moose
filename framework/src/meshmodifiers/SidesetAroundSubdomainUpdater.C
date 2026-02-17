@@ -65,6 +65,7 @@ SidesetAroundSubdomainUpdater::SidesetAroundSubdomainUpdater(const InputParamete
     _displaced_boundary_info(
         _displaced_problem ? &_displaced_problem->mesh().getMesh().get_boundary_info() : nullptr)
 {
+    std::cout<<"********SidesetAroundSubdomainUpdater::SidesetAroundSubdomainUpdater : call constructure\n";
   // subdomains
   const auto & inner_subdomains = getParam<std::vector<SubdomainName>>("inner_subdomains");
   const auto & outer_subdomains = getParam<std::vector<SubdomainName>>("outer_subdomains");
@@ -176,7 +177,7 @@ SidesetAroundSubdomainUpdater::finalize()
   const auto & mesh = _mesh.getMesh();
   const auto * displaced_mesh =
       _displaced_problem ? &_displaced_problem->mesh().getMesh() : nullptr;
-
+    std::cout<<"***************SidesetAroundSubdomainUpdater::finalize() *************\n";
   // ------------------------------------------------------------------
   // 3) COMPLETELY REMOVE all nodes with this boundary id
   // ------------------------------------------------------------------
@@ -239,8 +240,8 @@ SidesetAroundSubdomainUpdater::finalize()
     {
       const Elem * neigh = elem->neighbor_ptr(side);
 
-      _console << "Elem " << elem->id() << " (subdomain " << elem->subdomain_id() << ")  side "
-               << side;
+      // _console << "Elem " << elem->id() << " (subdomain " << elem->subdomain_id() << ")  side "
+      //          << side;
 
       bool is_exterior = false;
 
@@ -249,19 +250,19 @@ SidesetAroundSubdomainUpdater::finalize()
         // neighbor exists but is NOT in inner_ids => interface to "outside"
         if (!_inner_ids.count(neigh->subdomain_id()))
         {
-          _console << "  -> neighbor Elem " << neigh->id() << " (subdomain "
-                   << neigh->subdomain_id() << ")";
+          // _console << "  -> neighbor Elem " << neigh->id() << " (subdomain "
+          //          << neigh->subdomain_id() << ")";
 
-          _console << std::endl;
-          _console << "Exterior side: elem " << elem->id() << " side " << side << " nodes: ";
+          // _console << std::endl;
+          // _console << "Exterior side: elem " << elem->id() << " side " << side << " nodes: ";
 
-          for (auto ln : elem->nodes_on_side(side))
-            _console << elem->node_id(ln) << " ";
+          // for (auto ln : elem->nodes_on_side(side))
+          //   _console << elem->node_id(ln) << " ";
 
           is_exterior = true;
         }
       }
-      _console << std::endl;
+     // _console << std::endl;
 
       if (!is_exterior)
         continue;
