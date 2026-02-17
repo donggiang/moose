@@ -29,19 +29,27 @@ CrackTipEnrichmentCutOffBC::CrackTipEnrichmentCutOffBC(const InputParameters & p
     _cut_off_radius(getParam<Real>("cut_off_radius")),
     _crack_front_definition(getUserObject<CrackFrontDefinition>("crack_front_definition"))
 {
+    std::cout<<"***********CrackTipEnrichmentCutOffBC::CrackTipEnrichmentCutOffBC: call constructor*****\n";
 }
 
 bool
 CrackTipEnrichmentCutOffBC::shouldApply() const
 {
-  if (_cut_off_radius == 0)
-    return true;
+  // if(_cut_off_radius==0)
+  // {
+  // //     std::cout<<"******************************************\n";
+  // // std::cout<<"***********CrackTipEnrichmentCutOffBC: node: " << (*_current_node) << "\n";
+  //   return true;
+  // }
+  // Real r, theta;
+  // _crack_front_definition.calculateRThetaToCrackFront((*_current_node), r, theta);
 
-  Real r, theta;
-  _crack_front_definition.calculateRThetaToCrackFront((*_current_node), r, theta);
-
-  if (r > _cut_off_radius && _cut_off_radius > 0)
+  // if (r > _cut_off_radius && _cut_off_radius>0)
+  // {
+  // // std::cout<<"******************************************\n";
+  // // std::cout<<"***********CrackTipEnrichmentCutOffBC: node: " << (*_current_node) << "\n";
     return true;
-  else
-    return false;
+  // }
+  // else
+  //   return false;
 }
