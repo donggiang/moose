@@ -282,19 +282,26 @@ XFEM::update(Real time,
 
   bool mesh_changed = false;
   buildEFAMesh();
+   // std::cout<< "*****XFEM::update, print mesh as mesh before updated\n";
+  //printElementConnectivity();
 
   _fe_problem->execute(EXEC_XFEM_MARK);
 
   storeCrackTipOriginAndDirection();
+  //_fe_problem->execute(EXEC_XFEM_SUBDOMAIN_MODIFIER);
 
   if (markCuts(time))
-    mesh_changed = cutMeshWithEFA(nl, aux);
+   mesh_changed = cutMeshWithEFA(nl, aux);
 
+
+  //*********************** */
+  // update subdomain: TODO
   if (mesh_changed)
   {
     buildEFAMesh();
     storeCrackTipOriginAndDirection();
   }
+
 
   if (mesh_changed)
   {
@@ -308,10 +315,13 @@ XFEM::update(Real time,
       _displaced_mesh->skip_partitioning(true);
       _displaced_mesh->prepare_for_use();
     }
+   // std::cout<< "*****XFEM::update, print mesh as mesh is updated\n";
+    //printElementConnectivity();
   }
 
   clearStateMarkedElems();
   clearGeomMarkedElems();
+  //_fe_problem->execute(EXEC_XFEM_SUBDOMAIN_MODIFIER);
   return mesh_changed;
 }
 
@@ -1418,9 +1428,7 @@ XFEM::cutMeshWithEFA(const std::vector<std::shared_ptr<NonlinearSystemBase>> & n
     {
       if (_material_data[0]->getMaterialPropertyStorage().hasStatefulProperties())
         _material_data[0]->copy(*libmesh_elem, *parent_elem, 0);
-
-      /*need to comment out the below lines to avoid checking material state on boundaries!!!!!*/
-        // if (_bnd_material_data[0]->getMaterialPropertyStorage().hasStatefulProperties())
+      // if (_bnd_material_data[0]->getMaterialPropertyStorage().hasStatefulProperties())
       // {
       //   std::cout<<"*************** XFEM::cutMeshWithEFA(), debug 1.2.1\n";
       //   for (unsigned int side = 0; side < parent_elem->n_sides(); ++side)
@@ -1543,6 +1551,7 @@ XFEM::cutMeshWithEFA(const std::vector<std::shared_ptr<NonlinearSystemBase>> & n
       }
     }
   }
+
 
   // clear the temporary map
   temporary_parent_children_map.clear();
@@ -1737,6 +1746,30 @@ XFEM::isElemAtCrackTip(const Elem * elem) const
   return (_crack_tip_elems.find(elem) != _crack_tip_elems.end());
 }
 
+// bool
+// XFEM::isElemCrackTipSplit(const Elem * elem)
+// {
+//   EFAElement * efa_elem = _efa_mesh.findElemByID(elem->id());
+//   if (!efa_elem)
+//     return false;
+
+//   if (_mesh->mesh_dimension() == 2)
+//   {
+//     if (const auto * efa_elem2d = dynamic_cast<const EFAElement2D *>(efa_elem))
+//       return efa_elem2d->isCrackTipSplit();
+//     return false;
+//   }
+
+//   // if (_mesh->mesh_dimension() == 3)
+//   // {
+//   //   if (const auto * efa_elem3d = dynamic_cast<const EFAElement3D *>(efa_elem))
+//   //     return efa_elem3d->isCrackTipSplit();
+//   //   return false;
+//   // }
+
+//   return false;
+// }
+
 bool
 XFEM::isElemCrackTipSplit(const Elem * elem)
 {
@@ -1751,12 +1784,12 @@ XFEM::isElemCrackTipSplit(const Elem * elem)
     return false;
   }
 
-  if (_mesh->mesh_dimension() == 3)
-  {
-    if (const auto * efa_elem3d = dynamic_cast<const EFAElement3D *>(efa_elem))
-      return efa_elem3d->isCrackTipSplit();
-    return false;
-  }
+  // if (_mesh->mesh_dimension() == 3)
+  // {
+  //   if (const auto * efa_elem3d = dynamic_cast<const EFAElement3D *>(efa_elem))
+  //     return efa_elem3d->isCrackTipSplit();
+  //   return false;
+  // }
 
   return false;
 }
