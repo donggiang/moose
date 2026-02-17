@@ -92,6 +92,7 @@ MeshCut2DFractureUserObject::MeshCut2DFractureUserObject(const InputParameters &
 void
 MeshCut2DFractureUserObject::initialize()
 {
+  std::cout << "********MeshCut2DFractureUserObject::initialize()\n";
   _is_mesh_modified = false;
   findActiveBoundaryGrowth();
   growFront();
@@ -104,6 +105,8 @@ MeshCut2DFractureUserObject::initialize()
     _crack_front_definition->updateCrackFrontPoints();
 
   std::vector<Point> p = getCrackFrontPoints(1);
+  std::cout << "********MeshCut2DFractureUserObject::initialize(), crack tip location: " << p[0]
+            << "\n";
 }
 
 bool
@@ -133,7 +136,8 @@ MeshCut2DFractureUserObject::findActiveBoundaryGrowth()
 
   if (_use_stress && ((_stress_vpp->size() != _original_and_current_front_node_ids.size())))
     mooseError("stress_vectorpostprocessor should have the same number of crack front points as "
-               "CrackFrontDefinition.",
+               "CrackFrontDefinition.  If it is empty, check that CrackFrontNonlocalStress "
+               "vectorpostprocess has execute_on = TIMESTEP_BEGIN",
                "\n  stress_vectorpostprocessor size = ",
                _stress_vpp->size(),
                "\n  cracktips in MeshCut2DFractureUserObject = ",
@@ -150,51 +154,24 @@ MeshCut2DFractureUserObject::findActiveBoundaryGrowth()
   _active_front_node_growth_vectors.clear();
   for (unsigned int i = 0; i < _original_and_current_front_node_ids.size(); ++i)
   {
-    // only extend crack with kcrit or nonlocal stress, never both.
-    bool was_crack_extended_kcrit = false;
     if (_use_k)
     {
       Real k_crit = _k_critical;
       if (_k_critical_vpp)
         k_crit = std::min(_k_critical_vpp->at(i), _k_critical);
-
       Real k_squared = _ki_vpp->at(i) * _ki_vpp->at(i) + _kii_vpp->at(i) * _kii_vpp->at(i);
       if (k_squared > (k_crit * k_crit) && _ki_vpp->at(i) > 0)
       {
-        //     std::cout<< "*** findActiveBoundaryGrowth(), debug 2\n";
-        was_crack_extended_kcrit = true;
         // growth direction in crack front coord (cfc) system based on the  max hoop stress
         // criterion
         Real ki = _ki_vpp->at(i);
         Real kii = _kii_vpp->at(i);
-
-        Real theta = 0.0;
-
-        // scale-aware tolerance (tune if you like)
-        const Real k_norm = std::sqrt(ki * ki + kii * kii);
-        const Real eps = std::max(1e-14, 1e-12 * k_norm);
-
-        if (std::abs(kii) < eps || k_norm < eps)
-        {
-          // Pure Mode I (or essentially no driving): go straight
-          theta = 0.0;
-        }
-        else
-        {
-          // Use stable branch selection via sign(KII)
-          const Real sgn = (kii >= 0.0) ? 1 : -1;
-          const Real r = ki / kii; // safe because |kii| >= eps
-          Real sqrt_k = std::sqrt(ki * ki + 8 * kii * kii);
-
-          // const Real a = 0.25 * (r - root); // stable expression
-          theta = 2 * std::atan((ki + sgn * sqrt_k) / (4 * kii));
-        }
-
-        // direction from angle
+        Real sqrt_k = std::sqrt(ki * ki + 8*kii * kii);
+        Real theta = 2 * std::atan((ki - sqrt_k) / (4 * kii));
         RealVectorValue dir_cfc;
         dir_cfc(0) = std::cos(theta);
         dir_cfc(1) = std::sin(theta);
-        dir_cfc(2) = 0.0;
+        dir_cfc(2) = 0;
 
         // growth direction in global coord system based on the max hoop stress criterion
         RealVectorValue dir_global =
@@ -205,9 +182,8 @@ MeshCut2DFractureUserObject::findActiveBoundaryGrowth()
             std::make_pair(_original_and_current_front_node_ids[i].second, nodal_offset));
       }
     }
-    if (_use_stress && !was_crack_extended_kcrit && _stress_vpp->at(i) > _stress_threshold)
+    else if (_use_stress && _stress_vpp->at(i) > _stress_threshold)
     {
-      // crack will only be extended if it was not already extended by kcrit
       // just extending the crack in the same direction it was going
       RealVectorValue dir_cfc(1.0, 0.0, 0.0);
       RealVectorValue dir_global =
@@ -219,3 +195,115 @@ MeshCut2DFractureUserObject::findActiveBoundaryGrowth()
     }
   }
 }
+
+// void
+// MeshCut2DFractureUserObject::findActiveBoundaryGrowth()
+// {
+//   // The k*_vpp & stress_vpp are empty (but not a nullptr) on the very first time step because this
+//   // UO is called before the InteractionIntegral or crackFrontStress vpp
+//   if ((!_ki_vpp || _ki_vpp->size() == 0) && (!_stress_vpp || _stress_vpp->size() == 0))
+//     return;
+
+//   if (_use_k && ((_ki_vpp->size() != _kii_vpp->size()) ||
+//                  (_ki_vpp->size() != _original_and_current_front_node_ids.size())))
+//     mooseError("ki_vectorpostprocessor and kii_vectorpostprocessor should have the same number of "
+//                "crack tips as CrackFrontDefinition.",
+//                "\n  ki size = ",
+//                _ki_vpp->size(),
+//                "\n  kii size = ",
+//                _kii_vpp->size(),
+//                "\n  cracktips in MeshCut2DFractureUserObject = ",
+//                _original_and_current_front_node_ids.size());
+
+//   if (_use_stress && ((_stress_vpp->size() != _original_and_current_front_node_ids.size())))
+//     mooseError("stress_vectorpostprocessor should have the same number of crack front points as "
+//                "CrackFrontDefinition.",
+//                "\n  stress_vectorpostprocessor size = ",
+//                _stress_vpp->size(),
+//                "\n  cracktips in MeshCut2DFractureUserObject = ",
+//                _original_and_current_front_node_ids.size());
+
+//   if (_k_critical_vpp && ((_k_critical_vpp->size() != _original_and_current_front_node_ids.size())))
+//     mooseError("k_critical_vectorpostprocessor must have the same number of crack front points as "
+//                "CrackFrontDefinition.",
+//                "\n  k_critical_vectorpostprocessor size = ",
+//                _k_critical_vpp->size(),
+//                "\n  cracktips in MeshCut2DFractureUserObject = ",
+//                _original_and_current_front_node_ids.size());
+
+//   _active_front_node_growth_vectors.clear();
+//   for (unsigned int i = 0; i < _original_and_current_front_node_ids.size(); ++i)
+//   {
+//     // only extend crack with kcrit or nonlocal stress, never both.
+//     bool was_crack_extended_kcrit = false;
+//     if (_use_k)
+//     {
+//       Real k_crit = _k_critical;
+//       if (_k_critical_vpp)
+//         k_crit = std::min(_k_critical_vpp->at(i), _k_critical);
+
+//       Real k_squared = _ki_vpp->at(i) * _ki_vpp->at(i) + _kii_vpp->at(i) * _kii_vpp->at(i);
+//         std::cout<< "*** findActiveBoundaryGrowth(), debug 1, " << k_squared << ", " <<
+//         _ki_vpp->at(i) << ", "<<  _kii_vpp->at(i)<< "," <<k_crit << "\n";
+//       if (k_squared > (k_crit * k_crit) && _ki_vpp->at(i) > 0)
+//       {
+//         //     std::cout<< "*** findActiveBoundaryGrowth(), debug 2\n";
+//         was_crack_extended_kcrit = true;
+//         // growth direction in crack front coord (cfc) system based on the  max hoop stress
+//         // criterion// criterion (maximum hoop stress)
+//         // robust against KII -> 0 and avoids singular division in your current formula
+//         Real ki = _ki_vpp->at(i);
+//         Real kii = _kii_vpp->at(i);
+
+//         Real theta = 0.0;
+
+//         // scale-aware tolerance (tune if you like)
+//         const Real k_norm = std::sqrt(ki * ki + kii * kii);
+//         const Real eps = std::max(1e-14, 1e-12 * k_norm);
+
+//         if (std::abs(kii) < eps || k_norm < eps)
+//         {
+//           // Pure Mode I (or essentially no driving): go straight
+//           theta = 0.0;
+//         }
+//         else
+//         {
+//           // Use stable branch selection via sign(KII)
+//           const Real sgn = (kii >= 0.0) ? 1 : -1;
+//           const Real r = ki / kii; // safe because |kii| >= eps
+//           Real sqrt_k = std::sqrt(ki * ki + 8*kii * kii);
+
+
+//           //const Real a = 0.25 * (r - root); // stable expression
+//           theta =  2 * std::atan((ki + sgn*sqrt_k) / (4 * kii));
+//         }
+
+//         // direction from angle
+//         RealVectorValue dir_cfc;
+//         dir_cfc(0) = std::cos(theta);
+//         dir_cfc(1) = std::sin(theta);
+//         dir_cfc(2) = 0.0;
+
+//         // growth direction in global coord system based on the max hoop stress criterion
+//         RealVectorValue dir_global =
+//             _crack_front_definition->rotateFromCrackFrontCoordsToGlobal(dir_cfc, i);
+//         Point dir_global_pt(dir_global(0), dir_global(1), dir_global(2));
+//         Point nodal_offset = dir_global_pt * _growth_increment;
+//         _active_front_node_growth_vectors.push_back(
+//             std::make_pair(_original_and_current_front_node_ids[i].second, nodal_offset));
+//       }
+//     }
+//     if (_use_stress && !was_crack_extended_kcrit && _stress_vpp->at(i) > _stress_threshold)
+//     {
+//       // crack will only be extended if it was not already extended by kcrit
+//       // just extending the crack in the same direction it was going
+//       RealVectorValue dir_cfc(1.0, 0.0, 0.0);
+//       RealVectorValue dir_global =
+//           _crack_front_definition->rotateFromCrackFrontCoordsToGlobal(dir_cfc, i);
+//       Point dir_global_pt(dir_global(0), dir_global(1), dir_global(2));
+//       Point nodal_offset = dir_global_pt * _growth_increment;
+//       _active_front_node_growth_vectors.push_back(
+//           std::make_pair(_original_and_current_front_node_ids[i].second, nodal_offset));
+//     }
+//   }
+// }
