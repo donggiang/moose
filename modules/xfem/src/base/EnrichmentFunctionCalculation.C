@@ -29,8 +29,7 @@ EnrichmentFunctionCalculation::crackTipEnrichementFunctionAtPoint(const Point & 
   Real st = std::sin(_theta);
   Real st2 = std::sin(_theta / 2.0);
   Real ct2 = std::cos(_theta / 2.0);
-  Real sr = std::sqrt(_r);
-
+  Real sr = std::pow(_r, 1.0/2.0) ;//std::sqrt(_r);
   B[0] = sr * st2;
   B[1] = sr * ct2;
   B[2] = sr * st2 * st;
@@ -56,7 +55,7 @@ EnrichmentFunctionCalculation::crackTipEnrichementFunctionDerivativeAtPoint(
   Real ct2 = std::cos(_theta / 2.0);
   Real st15 = std::sin(1.5 * _theta);
   Real ct15 = std::cos(1.5 * _theta);
-  Real sr = std::sqrt(_r);
+  Real sr = std::pow(_r, 1.0/2.0) ;//std::sqrt(_r);
 
   dB[0](0) = -0.5 / sr * st2;
   dB[0](1) = 0.5 / sr * ct2;

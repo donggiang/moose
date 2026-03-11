@@ -10,7 +10,8 @@
 #pragma once
 
 #include "ElementVectorPostprocessor.h"
-
+#include "EnrichmentFunctionCalculation.h"
+#include "CrackFrontDefinition.h"
 // Forward Declarations
 class CrackFrontDefinition;
 
@@ -20,7 +21,8 @@ class CrackFrontDefinition;
  * including KI, KII, KIII, and the T stress.
  */
 template <bool is_ad>
-class InteractionIntegralTempl : public ElementVectorPostprocessor
+class InteractionIntegralTempl : public ElementVectorPostprocessor,
+                                                   public EnrichmentFunctionCalculation
 {
 public:
   static InputParameters validParams();
@@ -182,7 +184,30 @@ protected:
   ///@{
   const GenericMaterialProperty<RankThreeTensor, is_ad> * _eigenstrain_gradient;
   const MaterialProperty<RealVectorValue> * _body_force;
+
+
   ///@}
+  /// enrichment displacement variables
+  std::vector<RealVectorValue>  _grad_enriched_disp;
+  
+  std::vector<std::vector<MooseVariableFEBase *>> _enrich_variable;
+
+
+private:
+  /// enrichment function value
+  std::vector<Real> _B;
+  /// derivatives of enrichment function respect to global cooridnate
+  std::vector<RealVectorValue> _dBX;
+  /// derivatives of enrichment function respect to crack front cooridnate
+  std::vector<RealVectorValue> _dBx;
+  /// enrichment function at node I
+  std::vector<std::vector<Real>> _BI;
+  // /// shape function
+  // const std::vector<std::vector<Real>> * _fe_phi;
+  // const std::vector<std::vector<RealGradient>> * _fe_dphi;
+
+  NonlinearSystem * _nl;
+  const NumericVector<Number> * _sln;
 };
 
 typedef InteractionIntegralTempl<false> InteractionIntegral;

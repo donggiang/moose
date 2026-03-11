@@ -41,5 +41,8 @@ protected:
 
   std::vector<const MaterialProperty<RankTwoTensor> *> _eigenstrains_old;
   /// Rate of change of the displacement gradient
-  MaterialProperty<RankTwoTensor> & _grad_disp_rate;
+  //MaterialProperty<RankTwoTensor> & _grad_disp_rate;
+  MaterialProperty<RankTwoTensor> & _grad_enrich_disp_tensor;
+  const MaterialProperty<RankTwoTensor> & _grad_enrich_disp_tensor_old;
+
 };

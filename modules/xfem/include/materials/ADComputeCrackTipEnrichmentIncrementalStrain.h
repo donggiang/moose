@@ -8,7 +8,7 @@
 //* https://www.gnu.org/licenses/lgpl-2.1.html
 
 #pragma once
-#include "ComputeIncrementalStrainBase.h"
+#include "ADComputeIncrementalStrainBase.h"
 #include "Material.h"
 #include "RankTwoTensor.h"
 #include "RankFourTensor.h"
@@ -16,27 +16,27 @@
 #include "Assembly.h"
 #include "CrackFrontDefinition.h"
 #include "EnrichmentFunctionCalculation.h"
-
+#include "NonlinearSystem.h"
 /**
  * ComputeIncrementalStrain defines a strain increment and rotation increment (=1), for small
  * strains.
  */
-class ComputeCrackTipEnrichmentIncrementalStrain : public ComputeIncrementalStrainBase,
+class ADComputeCrackTipEnrichmentIncrementalStrain : public ADComputeIncrementalStrainBase,
                                                    public EnrichmentFunctionCalculation
 {
 public:
   static InputParameters validParams();
 
-  ComputeCrackTipEnrichmentIncrementalStrain(const InputParameters & parameters);
-  virtual ~ComputeCrackTipEnrichmentIncrementalStrain() {}
+  ADComputeCrackTipEnrichmentIncrementalStrain(const InputParameters & parameters);
+  virtual ~ADComputeCrackTipEnrichmentIncrementalStrain() {}
   virtual void computeProperties() override;
 
 protected:
   /// enrichment displacement
-  std::vector<Real> _enrich_disp;
+  std::vector<ADReal> _enrich_disp;
 
   /// gradient of enrichment displacement
-  std::vector<RealVectorValue> _grad_enrich_disp;
+  std::vector<ADRealVectorValue> _grad_enrich_disp;
   std::vector<RealVectorValue> _grad_enrich_disp_old;
 
   /// enrichment displacement variables
@@ -49,8 +49,13 @@ protected:
   const VariablePhiGradient & _grad_phi;
 
   /// gradient of the enriched solution
- // MaterialProperty<RankTwoTensor> & _grad_enrich_disp_tensor;
+  //MaterialProperty<RankTwoTensor> & _grad_enrich_disp_tensor;
   //const MaterialProperty<RankTwoTensor> & _grad_enrich_disp_tensor_old;
+  ADMaterialProperty<RankTwoTensor> & _grad_disp_tensor;
+  //ADMaterialProperty<RankTwoTensor> & _small_strain;
+  const MaterialProperty<RankTwoTensor> & _grad_disp_tensor_old;
+  //const MaterialProperty<RankTwoTensor> & _small_strain_old;
+  //MaterialProperty<RankTwoTensor> & _grad_disp_rate;
 
 private:
   /// enrichment function value

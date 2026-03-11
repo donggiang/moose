@@ -19,7 +19,8 @@
   using ADComputeIncrementalStrainBaseTempl<R2>::_rotation_increment;                              \
   using ADComputeIncrementalStrainBaseTempl<R2>::_mechanical_strain_old;                           \
   using ADComputeIncrementalStrainBaseTempl<R2>::_total_strain_old;                                \
-  using ADComputeIncrementalStrainBaseTempl<R2>::_eigenstrains_old
+  using ADComputeIncrementalStrainBaseTempl<R2>::_eigenstrains_old;                                \
+  using ADComputeIncrementalStrainBaseTempl<R2>::_grad_disp_rate
 
 /**
  * ADComputeIncrementalStrainBase is the base class for strain tensors using incremental
@@ -52,7 +53,9 @@ protected:
   const MaterialProperty<R2> & _total_strain_old;
 
   std::vector<const MaterialProperty<R2> *> _eigenstrains_old;
-
+  MaterialProperty<RankTwoTensor> & _grad_disp_rate;
+  ADMaterialProperty<RankTwoTensor> & _grad_enrich_disp_tensor;
+  const MaterialProperty<RankTwoTensor> & _grad_enrich_disp_tensor_old;
   usingComputeStrainBaseMembers;
 };
 

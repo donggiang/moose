@@ -118,8 +118,6 @@ MeshCut2DFractureUserObject::isCutterMeshChanged() const
 void
 MeshCut2DFractureUserObject::findActiveBoundaryGrowth()
 {
-  // The k*_vpp & stress_vpp are empty (but not a nullptr) on the very first time step because this
-  // UO is called before the InteractionIntegral or crackFrontStress vpp
   if ((!_ki_vpp || _ki_vpp->size() == 0) && (!_stress_vpp || _stress_vpp->size() == 0))
     return;
 
@@ -136,14 +134,13 @@ MeshCut2DFractureUserObject::findActiveBoundaryGrowth()
 
   if (_use_stress && ((_stress_vpp->size() != _original_and_current_front_node_ids.size())))
     mooseError("stress_vectorpostprocessor should have the same number of crack front points as "
-               "CrackFrontDefinition.  If it is empty, check that CrackFrontNonlocalStress "
-               "vectorpostprocess has execute_on = TIMESTEP_BEGIN",
+               "CrackFrontDefinition.",
                "\n  stress_vectorpostprocessor size = ",
                _stress_vpp->size(),
                "\n  cracktips in MeshCut2DFractureUserObject = ",
                _original_and_current_front_node_ids.size());
 
-  if (_k_critical_vpp && ((_k_critical_vpp->size() != _original_and_current_front_node_ids.size())))
+  if (_k_critical_vpp && (_k_critical_vpp->size() != _original_and_current_front_node_ids.size()))
     mooseError("k_critical_vectorpostprocessor must have the same number of crack front points as "
                "CrackFrontDefinition.",
                "\n  k_critical_vectorpostprocessor size = ",
@@ -152,44 +149,101 @@ MeshCut2DFractureUserObject::findActiveBoundaryGrowth()
                _original_and_current_front_node_ids.size());
 
   _active_front_node_growth_vectors.clear();
+
   for (unsigned int i = 0; i < _original_and_current_front_node_ids.size(); ++i)
   {
+    bool was_crack_extended_kcrit = false;
+
     if (_use_k)
     {
       Real k_crit = _k_critical;
       if (_k_critical_vpp)
         k_crit = std::min(_k_critical_vpp->at(i), _k_critical);
-      Real k_squared = _ki_vpp->at(i) * _ki_vpp->at(i) + _kii_vpp->at(i) * _kii_vpp->at(i);
-      if (k_squared > (k_crit * k_crit) && _ki_vpp->at(i) > 0)
-      {
-        // growth direction in crack front coord (cfc) system based on the  max hoop stress
-        // criterion
-        Real ki = _ki_vpp->at(i);
-        Real kii = _kii_vpp->at(i);
-        Real sqrt_k = std::sqrt(ki * ki + 8*kii * kii);
-        Real theta = 2 * std::atan((ki - sqrt_k) / (4 * kii));
-        RealVectorValue dir_cfc;
-        dir_cfc(0) = std::cos(theta);
-        dir_cfc(1) = std::sin(theta);
-        dir_cfc(2) = 0;
 
-        // growth direction in global coord system based on the max hoop stress criterion
-        RealVectorValue dir_global =
-            _crack_front_definition->rotateFromCrackFrontCoordsToGlobal(dir_cfc, i);
-        Point dir_global_pt(dir_global(0), dir_global(1), dir_global(2));
-        Point nodal_offset = dir_global_pt * _growth_increment;
-        _active_front_node_growth_vectors.push_back(
-            std::make_pair(_original_and_current_front_node_ids[i].second, nodal_offset));
+      const Real ki = _ki_vpp->at(i);
+      const Real kii = _kii_vpp->at(i);
+      const Real k_sq = ki * ki + kii * kii;
+
+      if (k_sq > k_crit * k_crit)
+      {
+        was_crack_extended_kcrit = true;
+
+        const Real k_norm = std::sqrt(k_sq);
+        const Real eps = std::max(1e-14, 1e-12 * k_norm);
+
+        Real theta = 0.0;
+
+        if (k_norm < eps)
+        {
+          theta = 0.0;
+        }
+        else if (std::abs(kii) < eps)
+        {
+          // Near pure Mode I:
+          // KI > 0 -> forward growth, KI < 0 -> suppress or set theta = pi depending on model
+          if (ki >= 0.0)
+            theta = 0.0;
+          else
+            was_crack_extended_kcrit = false;
+        }
+        else
+        {
+          const Real root = std::sqrt(ki * ki + 8.0 * kii * kii);
+
+          const Real theta_m = 2.0 * std::atan((ki - root) / (4.0 * kii));
+          const Real theta_p = 2.0 * std::atan((ki + root) / (4.0 * kii));
+
+          const Real sigma_tt_m =
+              ki * (3.0 * std::cos(theta_m / 2.0) + std::cos(3.0 * theta_m / 2.0)) +
+              kii * (-3.0 * std::sin(theta_m / 2.0) - 3.0 * std::sin(3.0 * theta_m / 2.0));
+
+          const Real sigma_tt_p =
+              ki * (3.0 * std::cos(theta_p / 2.0) + std::cos(3.0 * theta_p / 2.0)) +
+              kii * (-3.0 * std::sin(theta_p / 2.0) - 3.0 * std::sin(3.0 * theta_p / 2.0));
+
+          theta = (sigma_tt_m > sigma_tt_p) ? theta_m : theta_p;
+        }
+
+        if (was_crack_extended_kcrit)
+        {
+          RealVectorValue dir_cfc;
+          dir_cfc(0) = std::cos(theta);
+          dir_cfc(1) = std::sin(theta);
+          dir_cfc(2) = 0.0;
+
+          RealVectorValue dir_global =
+              _crack_front_definition->rotateFromCrackFrontCoordsToGlobal(dir_cfc, i);
+
+          const Real norm_dir = dir_global.norm();
+          if (norm_dir > libMesh::TOLERANCE)
+            dir_global /= norm_dir;
+          else
+            mooseError("Computed crack growth direction has near-zero norm.");
+
+          Point nodal_offset(dir_global(0), dir_global(1), dir_global(2));
+          nodal_offset *= _growth_increment;
+
+          _active_front_node_growth_vectors.push_back(
+              std::make_pair(_original_and_current_front_node_ids[i].second, nodal_offset));
+        }
       }
     }
-    else if (_use_stress && _stress_vpp->at(i) > _stress_threshold)
+
+    if (_use_stress && !was_crack_extended_kcrit && _stress_vpp->at(i) > _stress_threshold)
     {
-      // just extending the crack in the same direction it was going
       RealVectorValue dir_cfc(1.0, 0.0, 0.0);
       RealVectorValue dir_global =
           _crack_front_definition->rotateFromCrackFrontCoordsToGlobal(dir_cfc, i);
-      Point dir_global_pt(dir_global(0), dir_global(1), dir_global(2));
-      Point nodal_offset = dir_global_pt * _growth_increment;
+
+      const Real norm_dir = dir_global.norm();
+      if (norm_dir > libMesh::TOLERANCE)
+        dir_global /= norm_dir;
+      else
+        mooseError("Computed crack growth direction has near-zero norm.");
+
+      Point nodal_offset(dir_global(0), dir_global(1), dir_global(2));
+      nodal_offset *= _growth_increment;
+
       _active_front_node_growth_vectors.push_back(
           std::make_pair(_original_and_current_front_node_ids[i].second, nodal_offset));
     }

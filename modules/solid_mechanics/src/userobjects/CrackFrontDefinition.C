@@ -828,24 +828,36 @@ CrackFrontDefinition::updateCrackFrontGeometry()
     for (std::size_t i = 0; i < num_crack_front_points; ++i)
     {
       RealVectorValue tangent_direction;
-      RealVectorValue crack_direction;
+      tangent_direction.zero();
       tangent_direction(_axis_2d) = 1.0;
+      tangent_direction = tangent_direction.unit();
+
       _tangent_directions.push_back(tangent_direction);
+
       const Point * crack_front_point = getCrackFrontPoint(i);
 
-      crack_direction =
-          calculateCrackFrontDirection(*crack_front_point, tangent_direction, MIDDLE_NODE, i);
+      RealVectorValue crack_plane_normal;
+      if (_use_mesh_cutter)
+        crack_plane_normal = _crack_plane_normals[i].unit();
+      else
+        crack_plane_normal = tangent_direction
+                                 .cross(calculateCrackFrontDirection(
+                                     *crack_front_point, tangent_direction, MIDDLE_NODE, i))
+                                 .unit();
+
+      RealVectorValue crack_direction = tangent_direction.cross(crack_plane_normal).unit();
+
+      // Recompute normal to guarantee orthogonality
+      crack_plane_normal = crack_direction.cross(tangent_direction).unit();
+
       _crack_directions.push_back(crack_direction);
+      _crack_plane_normals[i] = crack_plane_normal;
 
       RankTwoTensor rot_mat;
       rot_mat.fillRow(0, crack_direction);
-      rot_mat(2, _axis_2d) = 1.0;
+      rot_mat.fillRow(1, crack_plane_normal);
+      rot_mat.fillRow(2, tangent_direction);
 
-      if (!_use_mesh_cutter)
-        _crack_plane_normals.push_back(tangent_direction.cross(crack_direction));
-
-      mooseAssert(i <= _crack_plane_normals.size(), "_crack_plane_normals is the wrong size.");
-      rot_mat.fillRow(1, _crack_plane_normals[i]);
       _rot_matrix.push_back(rot_mat);
 
       _segment_lengths.push_back(std::make_pair(0.0, 0.0));

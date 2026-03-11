@@ -7,19 +7,19 @@
 //* Licensed under LGPL 2.1, please see LICENSE for details
 //* https://www.gnu.org/licenses/lgpl-2.1.html
 
-#include "ComputeCrackTipEnrichmentIncrementalStrain.h"
+#include "ADComputeCrackTipEnrichmentIncrementalStrain.h"
 #include "MooseMesh.h"
 #include "libmesh/fe_interface.h"
 #include "libmesh/string_to_enum.h"
 
 #include "libmesh/quadrature.h"
 
-registerMooseObject("XFEMApp", ComputeCrackTipEnrichmentIncrementalStrain);
+registerMooseObject("XFEMApp", ADComputeCrackTipEnrichmentIncrementalStrain);
 
 InputParameters
-ComputeCrackTipEnrichmentIncrementalStrain::validParams()
+ADComputeCrackTipEnrichmentIncrementalStrain::validParams()
 {
-  InputParameters params = ComputeIncrementalStrainBase::validParams();
+  InputParameters params = ADComputeIncrementalStrainBase::validParams();
   params.addClassDescription(
       "Computes the crack tip enrichment strain for an incremental small-strain formulation.");
   params.addRequiredParam<std::vector<NonlinearVariableName>>("enrichment_displacements",
@@ -31,9 +31,9 @@ ComputeCrackTipEnrichmentIncrementalStrain::validParams()
   return params;
 }
 
-ComputeCrackTipEnrichmentIncrementalStrain::ComputeCrackTipEnrichmentIncrementalStrain(
+ADComputeCrackTipEnrichmentIncrementalStrain::ADComputeCrackTipEnrichmentIncrementalStrain(
     const InputParameters & parameters)
-  : ComputeIncrementalStrainBase(parameters),
+  : ADComputeIncrementalStrainBase(parameters),
     EnrichmentFunctionCalculation(&getUserObject<CrackFrontDefinition>("crack_front_definition")),
     _enrich_disp(3),
     _grad_enrich_disp(3),
@@ -41,10 +41,8 @@ ComputeCrackTipEnrichmentIncrementalStrain::ComputeCrackTipEnrichmentIncremental
     _enrich_variable(4),
     _phi(_assembly.phi()),
     _grad_phi(_assembly.gradPhi()),
-    _grad_enrich_disp_tensor(
-        declareProperty<RankTwoTensor>(_base_name + "grad_enrich_disp_tensor")),
-    _grad_enrich_disp_tensor_old(
-        getMaterialPropertyOld<RankTwoTensor>(_base_name + "grad_enrich_disp_tensor")),
+    _grad_disp_tensor(declareADProperty<RankTwoTensor>(_base_name + "grad_disp_tensor")),
+    _grad_disp_tensor_old(getMaterialPropertyOld<RankTwoTensor>(_base_name + "grad_disp_tensor")),
     _B(4),
     _dBX(4),
     _dBx(4)
@@ -76,7 +74,7 @@ ComputeCrackTipEnrichmentIncrementalStrain::ComputeCrackTipEnrichmentIncremental
 }
 
 void
-ComputeCrackTipEnrichmentIncrementalStrain::computeProperties()
+ADComputeCrackTipEnrichmentIncrementalStrain::computeProperties()
 {
   FEType fe_type(Utility::string_to_enum<Order>("first"),
                  Utility::string_to_enum<FEFamily>("lagrange"));
@@ -117,25 +115,29 @@ ComputeCrackTipEnrichmentIncrementalStrain::computeProperties()
         for (unsigned int j = 0; j < 4; ++j)
         {
           dof_id_type dof = node_i->dof_number(_nl->number(), _enrich_variable[j][m]->number(), 0);
-          Real soln = (*_sln)(dof);
+          ADReal soln = (*_sln)(dof);
           Real soln_old = _nl->solutionOld()(dof);
+          if (ADReal::do_derivatives)
+            Moose::derivInsert(soln.derivatives(), dof, 1.);
           _enrich_disp[m] += (*_fe_phi)[i][_qp] * (_B[j] - _BI[i][j]) * soln;
           RealVectorValue grad_B(_dBX[j]);
 
           _grad_enrich_disp[m] +=
               ((*_fe_dphi)[i][_qp] * (_B[j] - _BI[i][j]) + (*_fe_phi)[i][_qp] * grad_B) * soln;
+
           _grad_enrich_disp_old[m] +=
               ((*_fe_dphi)[i][_qp] * (_B[j] - _BI[i][j]) + (*_fe_phi)[i][_qp] * grad_B) * soln_old;
         }
       }
     }
-    RankTwoTensor grad_enrich_disp_tensor = RankTwoTensor::initializeFromRows(
+
+    ADRankTwoTensor grad_enrich_disp_tensor = ADRankTwoTensor::initializeFromRows(
         _grad_enrich_disp[0], _grad_enrich_disp[1], _grad_enrich_disp[2]);
     RankTwoTensor grad_enrich_disp_tensor_old = RankTwoTensor::initializeFromRows(
         _grad_enrich_disp_old[0], _grad_enrich_disp_old[1], _grad_enrich_disp_old[2]);
-
     _grad_enrich_disp_tensor[_qp] = grad_enrich_disp_tensor;
-    auto grad_disp_tensor = RankTwoTensor::initializeFromRows(
+
+    auto grad_disp_tensor = ADRankTwoTensor::initializeFromRows(
         (*_grad_disp[0])[_qp], (*_grad_disp[1])[_qp], (*_grad_disp[2])[_qp]);
 
     auto grad_disp_tensor_old = RankTwoTensor::initializeFromRows(
@@ -143,6 +145,7 @@ ComputeCrackTipEnrichmentIncrementalStrain::computeProperties()
 
     // _deformation_gradient[_qp] = grad_disp_tensor + _grad_enrich_disp_tensor[_qp];
     // _deformation_gradient[_qp].addIa(1.0);
+
 
     _strain_increment[_qp] =
         0.5 * ((grad_disp_tensor + grad_enrich_disp_tensor) +
@@ -159,8 +162,8 @@ ComputeCrackTipEnrichmentIncrementalStrain::computeProperties()
     // // strain rate
     // if (_dt > 0)
     // {
-    //   _strain_rate[_qp] = _strain_increment[_qp] / _dt;
-    //   _grad_disp_rate[_qp] = (grad_disp_tensor - grad_disp_tensor_old) / _dt;
+     _strain_rate[_qp] = _strain_increment[_qp] / _dt;
+    _grad_disp_rate[_qp] = ( 0.5*(MetaPhysicL::raw_value(grad_disp_tensor)+MetaPhysicL::raw_value(grad_disp_tensor).transpose()) - 0.5*(grad_disp_tensor_old+grad_disp_tensor_old.transpose())) / _dt;
     // }
     // else
     // {
