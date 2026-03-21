@@ -282,8 +282,8 @@ XFEM::update(Real time,
 
   bool mesh_changed = false;
   buildEFAMesh();
-   // std::cout<< "*****XFEM::update, print mesh as mesh before updated\n";
-  //printElementConnectivity();
+  // std::cout<< "*****XFEM::update, print mesh as mesh before updated\n";
+  // printElementConnectivity();
 
   _fe_problem->execute(EXEC_XFEM_MARK);
 
@@ -291,8 +291,7 @@ XFEM::update(Real time,
   //_fe_problem->execute(EXEC_XFEM_SUBDOMAIN_MODIFIER);
 
   if (markCuts(time))
-   mesh_changed = cutMeshWithEFA(nl, aux);
-
+    mesh_changed = cutMeshWithEFA(nl, aux);
 
   //*********************** */
   // update subdomain: TODO
@@ -301,7 +300,6 @@ XFEM::update(Real time,
     buildEFAMesh();
     storeCrackTipOriginAndDirection();
   }
-
 
   if (mesh_changed)
   {
@@ -315,14 +313,32 @@ XFEM::update(Real time,
       _displaced_mesh->skip_partitioning(true);
       _displaced_mesh->prepare_for_use();
     }
-   // std::cout<< "*****XFEM::update, print mesh as mesh is updated\n";
-    //printElementConnectivity();
+    // std::cout<< "*****XFEM::update, print mesh as mesh is updated\n";
+    // printElementConnectivity();
   }
 
   clearStateMarkedElems();
   clearGeomMarkedElems();
   //_fe_problem->execute(EXEC_XFEM_SUBDOMAIN_MODIFIER);
   return mesh_changed;
+}
+
+void
+XFEM::storeZeroSolutionForNode(const Node * node_to_store_to,
+                               const Node * node_with_dof_layout,
+                               SystemBase & sys,
+                               std::map<unique_id_type, std::vector<Real>> & stored_solution) const
+{
+  std::vector<dof_id_type> stored_solution_dofs = getNodeSolutionDofs(node_with_dof_layout, sys);
+
+  std::vector<Real> stored_solution_scratch;
+  const std::size_t stored_solution_size =
+      (_fe_problem->isTransient() ? stored_solution_dofs.size() * 3 : stored_solution_dofs.size());
+
+  stored_solution_scratch.assign(stored_solution_size, 0.0);
+
+  if (!stored_solution_scratch.empty())
+    stored_solution[node_to_store_to->unique_id()] = stored_solution_scratch;
 }
 
 void
@@ -1132,7 +1148,7 @@ XFEM::printElementConnectivity(std::ostream & os)
     for (unsigned int i = 0; i < elem->n_nodes(); ++i)
       os << ' ' << elem->node_id(i);
 
-    os << " centroid " << elem->centroid() << std::endl;
+    // os << " centroid " << elem->centroid() << std::endl;
   }
 }
 
@@ -1285,30 +1301,72 @@ XFEM::cutMeshWithEFA(const std::vector<std::shared_ptr<NonlinearSystemBase>> & n
 
       libmesh_elem->set_node(j, libmesh_node);
 
-      // Store solution for all nodes affected by XFEM (even existing nodes)
+      // // Store solution for all nodes affected by XFEM (even existing nodes)
+      // if (parent_elem->is_semilocal(_mesh->processor_id()))
+      // {
+      //   Node * solution_node = libmesh_node; // Node from which to store solution
+      //   if (new_nodes_to_parents.find(libmesh_node) != new_nodes_to_parents.end())
+      //     solution_node = new_nodes_to_parents[libmesh_node];
+
+      //   if ((_moose_mesh->isSemiLocal(solution_node)) ||
+      //       (libmesh_node->processor_id() == _mesh->processor_id()))
+      //   {
+      //     storeSolutionForNode(libmesh_node,
+      //                          solution_node,
+      //                          *nls[0],
+      //                          _cached_solution,
+      //                          current_solution,
+      //                          old_solution,
+      //                          older_solution);
+      //     storeSolutionForNode(libmesh_node,
+      //                          solution_node,
+      //                          aux,
+      //                          _cached_aux_solution,
+      //                          current_aux_solution,
+      //                          old_aux_solution,
+      //                          older_aux_solution);
+      //   }
+      // }
+
+      // Store solution for all nodes affected by XFEM
       if (parent_elem->is_semilocal(_mesh->processor_id()))
       {
-        Node * solution_node = libmesh_node; // Node from which to store solution
-        if (new_nodes_to_parents.find(libmesh_node) != new_nodes_to_parents.end())
-          solution_node = new_nodes_to_parents[libmesh_node];
+        Node * solution_node = libmesh_node; // node used to determine DOF layout
+        bool is_new_node = false;
+
+        auto it_new = new_nodes_to_parents.find(libmesh_node);
+        if (it_new != new_nodes_to_parents.end())
+        {
+          solution_node = it_new->second; // parent node
+          is_new_node = true;
+        }
 
         if ((_moose_mesh->isSemiLocal(solution_node)) ||
             (libmesh_node->processor_id() == _mesh->processor_id()))
         {
-          storeSolutionForNode(libmesh_node,
-                               solution_node,
-                               *nls[0],
-                               _cached_solution,
-                               current_solution,
-                               old_solution,
-                               older_solution);
-          storeSolutionForNode(libmesh_node,
-                               solution_node,
-                               aux,
-                               _cached_aux_solution,
-                               current_aux_solution,
-                               old_aux_solution,
-                               older_aux_solution);
+          if (is_new_node)
+          {
+            storeZeroSolutionForNode(libmesh_node, solution_node, *nls[0], _cached_solution);
+            storeZeroSolutionForNode(libmesh_node, solution_node, aux, _cached_aux_solution);
+          }
+          else
+          {
+            storeSolutionForNode(libmesh_node,
+                                 solution_node,
+                                 *nls[0],
+                                 _cached_solution,
+                                 current_solution,
+                                 old_solution,
+                                 older_solution);
+
+            storeSolutionForNode(libmesh_node,
+                                 solution_node,
+                                 aux,
+                                 _cached_aux_solution,
+                                 current_aux_solution,
+                                 old_aux_solution,
+                                 older_aux_solution);
+          }
         }
       }
 
@@ -1551,7 +1609,6 @@ XFEM::cutMeshWithEFA(const std::vector<std::shared_ptr<NonlinearSystemBase>> & n
       }
     }
   }
-
 
   // clear the temporary map
   temporary_parent_children_map.clear();

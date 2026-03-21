@@ -120,13 +120,15 @@ EshelbyTensorTempl<is_ad>::computeQpProperties()
   RankTwoTensor FinvT(F.inverse().transpose());
 
   // 1st Piola-Kirchoff Stress (P):
-  RankTwoTensor P = detF * MetaPhysicL::raw_value(_stress[_qp]) * FinvT;
+  //RankTwoTensor P = detF * MetaPhysicL::raw_value(_stress[_qp]) * FinvT;
+  RankTwoTensor P = MetaPhysicL::raw_value(_stress[_qp]);
 
   // HTP = H^T * P = H^T * detF * sigma * FinvT;
   RankTwoTensor HTP = H.transpose() * P;
 
   RankTwoTensor WI = RankTwoTensor(RankTwoTensor::initIdentity);
-  WI *= (_sed[_qp] * detF);
+  //WI *= (_sed[_qp] * detF);
+  WI *= (_sed[_qp]);
 
   _eshelby_tensor[_qp] = WI - HTP;
 
@@ -137,7 +139,8 @@ EshelbyTensorTempl<is_ad>::computeQpProperties()
         (*_grad_disp_old[0])[_qp], (*_grad_disp_old[1])[_qp], (*_grad_disp_old[2])[_qp]);
 
     RankTwoTensor Wdot = RankTwoTensor(RankTwoTensor::initIdentity);
-    Wdot *= ((*_serd)[_qp] * detF);
+    //Wdot *= ((*_serd)[_qp] * detF);
+    Wdot *= ((*_serd)[_qp] );
 
     // F_dot = (F - F_old)/dt
     RankTwoTensor F_dot = (H - H_old) / _dt;

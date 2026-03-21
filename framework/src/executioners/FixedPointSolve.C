@@ -510,7 +510,7 @@ FixedPointSolve::solveStep(const std::set<dof_id_type> & transformed_dofs)
       _xfem_repeat_step = false;
       _xfem_update_count = 0;
     }
-
+    //_problem.printElemAndNodalSolution( std::cout, "FixedPointSolve: repeating XFEM solution");
     // Start new TIMESTEP_END section for solution invalidity
     // We have to restart the current iteration count to avoid double counting
     _app.solutionInvalidity().resetIterationOccurences();

@@ -249,31 +249,31 @@ InteractionIntegralTempl<is_ad>::InteractionIntegralTempl(const InputParameters 
     mooseInfo("A generic eigenstrain provided by the user will be considered in the interaction "
               "integral (via domain integral action).");
 
-  for (unsigned int i = 0; i < _enrich_variable.size(); ++i)
-    _enrich_variable[i].resize(_ndisp);
+  // for (unsigned int i = 0; i < _enrich_variable.size(); ++i)
+  //   _enrich_variable[i].resize(_ndisp);
 
-  std::vector<NonlinearVariableName> nl_vnames = {
-      "enrich1_x", "enrich2_x", "enrich3_x", "enrich4_x",
-      "enrich1_y", "enrich2_y", "enrich3_y", "enrich4_y"};
+  // std::vector<NonlinearVariableName> nl_vnames = {
+  //     "enrich1_x", "enrich2_x", "enrich3_x", "enrich4_x",
+  //     "enrich1_y", "enrich2_y", "enrich3_y", "enrich4_y"};
 
-  if (_ndisp == 2 && nl_vnames.size() != 8)
-    mooseError("The number of enrichment displacements should be total 8 for 2D.");
-  else if (_ndisp == 3 && nl_vnames.size() != 12)
-    mooseError("The number of enrichment displacements should be total 12 for 3D.");
+  // if (_ndisp == 2 && nl_vnames.size() != 8)
+  //   mooseError("The number of enrichment displacements should be total 8 for 2D.");
+  // else if (_ndisp == 3 && nl_vnames.size() != 12)
+  //   mooseError("The number of enrichment displacements should be total 12 for 3D.");
 
-  _nl = &(_fe_problem.getNonlinearSystem(/*nl_sys_num=*/0));
+  // _nl = &(_fe_problem.getNonlinearSystem(/*nl_sys_num=*/0));
 
-  for (unsigned int j = 0; j < _ndisp; ++j)
-    for (unsigned int i = 0; i < 4; ++i)
-      _enrich_variable[i][j] = &(_nl->getVariable(0, nl_vnames[j * 4 + i]));
+  // for (unsigned int j = 0; j < _ndisp; ++j)
+  //   for (unsigned int i = 0; i < 4; ++i)
+  //     _enrich_variable[i][j] = &(_nl->getVariable(0, nl_vnames[j * 4 + i]));
 
-  if (_ndisp == 2)
-    _BI.resize(4); // QUAD4
-  else if (_ndisp == 3)
-    _BI.resize(8); // HEX8
+  // if (_ndisp == 2)
+  //   _BI.resize(4); // QUAD4
+  // else if (_ndisp == 3)
+  //   _BI.resize(8); // HEX8
 
-  for (unsigned int i = 0; i < _BI.size(); ++i)
-    _BI[i].resize(4);
+  // for (unsigned int i = 0; i < _BI.size(); ++i)
+  //   _BI[i].resize(4);
 }
 
 template <bool is_ad>
@@ -313,46 +313,46 @@ InteractionIntegralTempl<is_ad>::computeQpIntegral(const std::size_t crack_front
                                                    const Real scalar_q,
                                                    const RealVectorValue & grad_of_scalar_q)
 {
-_sln = _nl->currentSolution();
+// _sln = _nl->currentSolution();
 
-for (unsigned int i = 0; i < _BI.size(); ++i)
-  crackTipEnrichementFunctionAtPoint(*(_current_elem->node_ptr(i)), _BI[i]);
+// for (unsigned int i = 0; i < _BI.size(); ++i)
+//   crackTipEnrichementFunctionAtPoint(*(_current_elem->node_ptr(i)), _BI[i]);
 
-crackTipEnrichementFunctionAtPoint(_q_point[_qp], _B);
-unsigned int cfp_index =
-    crackTipEnrichementFunctionDerivativeAtPoint(_q_point[_qp], _dBx);
+// crackTipEnrichementFunctionAtPoint(_q_point[_qp], _B);
+// unsigned int cfp_index =
+//     crackTipEnrichementFunctionDerivativeAtPoint(_q_point[_qp], _dBx);
 
-for (unsigned int i = 0; i < 4; ++i)
-  rotateFromCrackFrontCoordsToGlobal(_dBx[i], _dBX[i], cfp_index);
+// for (unsigned int i = 0; i < 4; ++i)
+//   rotateFromCrackFrontCoordsToGlobal(_dBx[i], _dBX[i], cfp_index);
 
-for (unsigned int m = 0; m < _ndisp; ++m)
-  _grad_enriched_disp[m].zero();
+// for (unsigned int m = 0; m < _ndisp; ++m)
+//   _grad_enriched_disp[m].zero();
 
-bool enriched_elem = (_current_elem->subdomain_id() == 2); // temporary hard-code
+// bool enriched_elem = (_current_elem->subdomain_id() == 2); // temporary hard-code
 
-if (enriched_elem)
-{
-  for (unsigned int i = 0; i < _current_elem->n_nodes(); ++i)
-  {
-    const Node * node_i = _current_elem->node_ptr(i);
+// if (enriched_elem)
+// {
+//   for (unsigned int i = 0; i < _current_elem->n_nodes(); ++i)
+//   {
+//     const Node * node_i = _current_elem->node_ptr(i);
 
-    for (unsigned int j = 0; j < 4; ++j)
-    {
-      RealVectorValue grad_B(_dBX[j]);
+//     for (unsigned int j = 0; j < 4; ++j)
+//     {
+//       RealVectorValue grad_B(_dBX[j]);
 
-      for (unsigned int m = 0; m < _ndisp; ++m)
-      {
-        dof_id_type dof =
-            node_i->dof_number(_nl->number(), _enrich_variable[j][m]->number(), 0);
-        Real soln = (*_sln)(dof);
+//       for (unsigned int m = 0; m < _ndisp; ++m)
+//       {
+//         dof_id_type dof =
+//             node_i->dof_number(_nl->number(), _enrich_variable[j][m]->number(), 0);
+//         Real soln = (*_sln)(dof);
 
-        _grad_enriched_disp[m] +=
-            ((*_dphi_curr_elem)[i][_qp] * (_B[j] - _BI[i][j]) +
-             (*_phi_curr_elem)[i][_qp] * grad_B) * soln;
-      }
-    }
-  }
-}
+//         _grad_enriched_disp[m] +=
+//             ((*_dphi_curr_elem)[i][_qp] * (_B[j] - _BI[i][j]) +
+//              (*_phi_curr_elem)[i][_qp] * grad_B) * soln;
+//       }
+//     }
+//   }
+// }
 
 // auto grad_disp = RankTwoTensor::initializeFromRows(
 //     (*_grad_disp[0])[_qp], (*_grad_disp[1])[_qp], (*_grad_disp[2])[_qp]);
@@ -386,8 +386,8 @@ if (enriched_elem)
 
   auto grad_disp = RankTwoTensor::initializeFromRows(
       (*_grad_disp[0])[_qp], (*_grad_disp[1])[_qp], (*_grad_disp[2])[_qp]);
-  auto grad_enriched_disp = RankTwoTensor::initializeFromRows(
-      (_grad_enriched_disp[0]), (_grad_enriched_disp[1]), (_grad_enriched_disp[2]));
+  // auto grad_enriched_disp = RankTwoTensor::initializeFromRows(
+  //     (_grad_enriched_disp[0]), (_grad_enriched_disp[1]), (_grad_enriched_disp[2]));
 
   //grad_disp = grad_disp + grad_enriched_disp;
 

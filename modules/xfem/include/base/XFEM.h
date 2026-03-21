@@ -110,7 +110,10 @@ public:
   explicit XFEM(const InputParameters & params);
 
   ~XFEM();
-
+void storeZeroSolutionForNode(const Node * node_to_store_to,
+                              const Node * node_with_dof_layout,
+                              SystemBase & sys,
+                              std::map<unique_id_type, std::vector<Real>> & stored_solution) const;
   void addGeometricCut(GeometricCutUserObject * geometric_cut);
 
   void addStateMarkedElem(unsigned int elem_id, RealVectorValue & normal);

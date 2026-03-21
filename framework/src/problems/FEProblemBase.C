@@ -139,6 +139,113 @@
 #include "metaphysicl/dualnumber.h"
 #include "SolidMechanicsAppTypes.h"
 using namespace libMesh;
+namespace
+{
+
+bool nodeOnBoundary(const MooseMesh & mesh, const Node & node, const BoundaryName & bname)
+{
+  const auto & boundary_info = mesh.getMesh().get_boundary_info();
+
+  const BoundaryID bid = boundary_info.get_id_by_name(bname);
+
+  if (bid == libMesh::BoundaryInfo::invalid_id)
+    return false;
+
+  std::vector<boundary_id_type> node_bids;
+  boundary_info.boundary_ids(&node, node_bids);
+
+  return std::find(node_bids.begin(), node_bids.end(), bid) != node_bids.end();
+}
+
+bool isEnrichmentVariableName(const std::string & name)
+{
+  return MooseUtils::startsWith(name, "enrich");
+}
+
+} // anonymous namespace
+// namespace
+// {
+// void printElemAndNodalSolution(MooseMesh & mesh,
+//                                const std::vector<std::shared_ptr<NonlinearSystemBase>> & nls,
+//                                std::ostream & os,
+//                                const std::string & header)
+// {
+//   os << "\n==================== " << header << " ====================\n";
+
+//   if (nls.empty())
+//   {
+//     os << "No nonlinear systems found.\n";
+//     return;
+//   }
+
+//   SystemBase & sys = *nls[0];
+//   const auto & vars = sys.getVariables(0);
+
+//   for (auto elem_it = mesh.getMesh().active_local_elements_begin();
+//        elem_it != mesh.getMesh().active_local_elements_end();
+//        ++elem_it)
+//   {
+//     const Elem * elem = *elem_it;
+
+//     os << "\nElem " << elem->id()
+//        << " | unique_id " << elem->unique_id()
+//        << " | block " << elem->subdomain_id()
+//        << " | proc " << elem->processor_id()
+//        << " | type " << elem->type()
+//        << "\n";
+
+//     for (unsigned int i = 0; i < elem->n_nodes(); ++i)
+//     {
+//       const Node * node = elem->node_ptr(i);
+
+//       os << "  node[" << i << "] id=" << node->id()
+//          << " uid=" << node->unique_id()
+//          << " xyz=(" << (*node)(0) << ", " << (*node)(1) << ", " << (*node)(2) << ")";
+
+//       for (auto * var : vars)
+//       {
+//         if (!var->isNodal())
+//           continue;
+
+//         const auto & var_subdomains = sys.getSubdomainsForVar(var->number());
+
+//         bool active_on_this_node = var_subdomains.empty();
+//         if (!active_on_this_node)
+//         {
+//           const auto & node_blocks = mesh.getNodeBlockIds(*node);
+//           for (const auto & sid : node_blocks)
+//           {
+//             if (var_subdomains.count(sid))
+//             {
+//               active_on_this_node = true;
+//               break;
+//             }
+//           }
+//         }
+
+//         if (!active_on_this_node)
+//           continue;
+
+//         unsigned int n_comp = node->n_comp(sys.number(), var->number());
+//         for (unsigned int c = 0; c < n_comp; ++c)
+//         {
+//           dof_id_type dof = node->dof_number(sys.number(), var->number(), c);
+//           Number val = (*(sys.currentSolution()))(dof);
+
+//           os << " | " << var->name();
+//           if (n_comp > 1)
+//             os << "[" << c << "]";
+//           os << "=" << val << " (dof " << dof << ")";
+//         }
+//       }
+
+//       os << "\n";
+//     }
+//   }
+
+//   os << "============================================================\n";
+// }
+// }
 
 // Anonymous namespace for helper function
 namespace
@@ -8624,13 +8731,204 @@ FEProblemBase::initXFEM(std::shared_ptr<XFEMInterface> xfem)
     }
 }
 
+// void
+// FEProblemBase::printElemAndNodalSolution(std::ostream & os, const std::string & header)
+// {
+//   os << "\n==================== " << header << " ====================\n";
+
+//   for (const auto & elem : _mesh.getMesh().active_local_element_ptr_range())
+//   {
+//     os << "Elem " << elem->id()
+//        << " block=" << elem->subdomain_id()
+//        << " proc=" << elem->processor_id()
+//        << " nodes:";
+
+//     for (unsigned int i = 0; i < elem->n_nodes(); ++i)
+//       os << " " << elem->node_id(i);
+
+//     os << '\n';
+
+//     for (unsigned int i = 0; i < elem->n_nodes(); ++i)
+//     {
+//       const Node * node = elem->node_ptr(i);
+//       os << "  Node " << node->id()
+//          << " = (" << (*node)(0) << ", " << (*node)(1) << ", " << (*node)(2) << ")";
+
+//       for (const auto & nl_sys : _nl)
+//       {
+//         auto & sys = nl_sys->system();
+
+//         unsigned int n_vars = sys.n_vars();
+
+//         for (unsigned int var_num = 0; var_num < n_vars; ++var_num)
+//         {
+//           const std::string & var_name = sys.variable_name(var_num);
+
+//           unsigned int ncomp = node->n_comp(sys.number(), var_num);
+
+//           for (unsigned int c = 0; c < ncomp; ++c)
+//           {
+//             dof_id_type dof = node->dof_number(sys.number(), var_num, c);
+
+//             if (dof == libMesh::DofObject::invalid_id)
+//               continue;
+
+//             Number val = (*sys.current_local_solution)(dof);
+
+//             os << " | " << var_name;
+//             if (ncomp > 1)
+//               os << "[" << c << "]";
+//             os << "=" << val;
+//           }
+//         }
+//       }
+
+//       os << '\n';
+//     }
+//   }
+
+//   os << "============================================================\n";
+// }
+
+void
+FEProblemBase::printElemAndNodalSolution(std::ostream & os, const std::string & header)
+{
+  os << "\n==================== " << header << " ====================\n";
+
+  for (const auto & elem : _mesh.getMesh().active_local_element_ptr_range())
+  {
+    os << "Elem " << elem->id()
+       << " block=" << elem->subdomain_id()
+       << " proc=" << elem->processor_id()
+       << " nodes:";
+
+    for (unsigned int i = 0; i < elem->n_nodes(); ++i)
+      os << " " << elem->node_id(i);
+    os << '\n';
+
+    for (unsigned int i = 0; i < elem->n_nodes(); ++i)
+    {
+      const Node * node = elem->node_ptr(i);
+
+      os << "  Node " << node->id()
+         << " = (" << (*node)(0) << ", " << (*node)(1) << ", " << (*node)(2) << ")";
+
+      for (const auto & nl_sys : _nl)
+      {
+        auto & sys = nl_sys->system();
+        const NumericVector<Number> & cur_sol = *sys.current_local_solution;
+        const NumericVector<Number> & old_sol = nl_sys->solutionOld();
+
+        const unsigned int n_vars = sys.n_vars();
+
+        for (unsigned int var_num = 0; var_num < n_vars; ++var_num)
+        {
+          const std::string & var_name = sys.variable_name(var_num);
+          const unsigned int ncomp = node->n_comp(sys.number(), var_num);
+
+          for (unsigned int c = 0; c < ncomp; ++c)
+          {
+            dof_id_type dof = node->dof_number(sys.number(), var_num, c);
+
+            if (dof == libMesh::DofObject::invalid_id)
+              continue;
+
+            Number cur = cur_sol(dof);
+            Number old = old_sol(dof);
+
+            os << " | " << var_name;
+            if (ncomp > 1)
+              os << "[" << c << "]";
+            os << ": cur=" << cur << ", old=" << old ;
+          }
+        }
+      }
+
+      os << '\n';
+    }
+
+    os << '\n';
+  }
+
+  os << "============================================================\n";
+}
+
+void
+FEProblemBase::zeroEnrichmentOnBoundary(const BoundaryName & bname)
+{
+  if (_nl.empty())
+    return;
+
+  auto & sys = _nl[0]->system();
+
+  NumericVector<Number> & current_solution = *sys.current_local_solution;
+  NumericVector<Number> & old_solution = _nl[0]->solutionOld();
+  NumericVector<Number> & older_solution = _nl[0]->solutionOlder();
+
+  const auto & vars = _nl[0]->getVariables(0);
+
+  unsigned int n_zeroed = 0;
+
+  for (const auto & node : _mesh.getMesh().local_node_ptr_range())
+  {
+    if (!nodeOnBoundary(_mesh, *node, bname))
+      continue;
+
+    const std::set<SubdomainID> & sids = _mesh.getNodeBlockIds(*node);
+
+    for (auto * var : vars)
+    {
+      if (!var->isNodal())
+        continue;
+
+      if (!isEnrichmentVariableName(var->name()))
+        continue;
+
+      const std::set<SubdomainID> & var_subdomains = _nl[0]->getSubdomainsForVar(var->number());
+
+      std::set<SubdomainID> intersect;
+      std::set_intersection(var_subdomains.begin(),
+                            var_subdomains.end(),
+                            sids.begin(),
+                            sids.end(),
+                            std::inserter(intersect, intersect.begin()));
+
+      if (!var_subdomains.empty() && intersect.empty())
+        continue;
+
+      const unsigned int n_comp = node->n_comp(sys.number(), var->number());
+      for (unsigned int c = 0; c < n_comp; ++c)
+      {
+        const dof_id_type dof = node->dof_number(sys.number(), var->number(), c);
+        current_solution.set(dof, 0.0);
+        old_solution.set(dof, 0.0);
+
+        if (isTransient())
+          older_solution.set(dof, 0.0);
+
+        ++n_zeroed;
+      }
+    }
+  }
+
+  current_solution.close();
+  old_solution.close();
+  if (isTransient())
+    older_solution.close();
+
+  sys.update();
+
+  _console << "Zeroed " << n_zeroed
+           << " enrichment DOFs on boundary '" << bname << "' (current/old/older)\n";
+}
+
 bool
 FEProblemBase::updateMeshXFEM()
 {
   TIME_SECTION("updateMeshXFEM", 5, "Updating XFEM");
 
   bool updated = false;
-  if (haveXFEM())
+  if (haveXFEM())    
   {
     if (_xfem->updateHeal())
       // XFEM exodiff tests rely on a given numbering because they cannot use map = true due to
@@ -8638,7 +8936,7 @@ FEProblemBase::updateMeshXFEM()
       // mesh, we need its call to renumber_nodes_and_elements in order to preserve these tests
       meshChanged(
           /*intermediate_change=*/false, /*contract_mesh=*/true, /*clean_refinement_flags=*/false);
-
+    //printElemAndNodalSolution(std::cout, "BEFORE _xfem->update");
     updated = _xfem->update(_time, _nl, *_aux);
     //execute(EXEC_XFEM_SUBDOMAIN_MODIFIER);
     if (updated)
@@ -8650,8 +8948,11 @@ FEProblemBase::updateMeshXFEM()
       restoreSolutions();
       //execute(EXEC_XFEM_SUBDOMAIN_MODIFIER);
       _console << "\nXFEM update complete: Mesh modified" << std::endl;
+      //printElemAndNodalSolution( std::cout, "AFTER _xfem->update");
     }
   }
+
+
   // Changing near-tip enrichment requires repeating the solution, even if the mesh is not updated
   bool crack_front_advanced = false;
   if (!updated)
@@ -8667,6 +8968,10 @@ FEProblemBase::updateMeshXFEM()
       _console << "\nXFEM update complete: Mesh not modified" << std::endl;
   }
   execute(EXEC_XFEM_SUBDOMAIN_MODIFIER);
+  // AFTER the interface sideset is rebuilt, enforce zero enrichment there
+  if (updated)
+    zeroEnrichmentOnBoundary("enriched_interface");
+
   return (updated || crack_front_advanced);
 }
 
