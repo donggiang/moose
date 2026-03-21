@@ -208,6 +208,8 @@ private:
 
   NonlinearSystem * _nl;
   const NumericVector<Number> * _sln;
+  SubdomainID _enriched_subdomain_id;
+
 };
 
 typedef InteractionIntegralTempl<false> InteractionIntegral;

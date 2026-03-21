@@ -1,0 +1,17 @@
+[Tests]
+  design = 'ComputeCrackTipEnrichmentIncrementalStrain.md'
+  issues = '#xfem_sif'
+
+  [shear_edge_crack_sif]
+    type = CSVDiff
+    input = 'shear_edge_crack_AD.i'
+    csvdiff = 'shear_edge_crack_nx81_ny161_ri24_ro30_nl10.csv'
+    rel_err = 1.0e-3
+    capabilities = 'unique_id & superlu'
+    requirement = 'The XFEM module shall compute stress intensity factors K_I and K_II for '
+                  'a 2D shear-loaded edge crack via the interaction integral with '
+                  'crack-tip enrichment. K_I shall be accurate to within 0.5% of the '
+                  'reference value (~34.0). K_II shall be accurate to within 1% of the '
+                  'converged value (~4.54).'
+  []
+[]

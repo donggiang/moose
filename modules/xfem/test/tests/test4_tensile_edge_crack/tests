@@ -1,0 +1,16 @@
+[Tests]
+  design = 'ComputeCrackTipEnrichmentIncrementalStrain.md'
+  issues = '#xfem_sif'
+
+  [tensile_edge_crack_sif]
+    type = CSVDiff
+    input = 'tensile_edge_crack_AD.i'
+    csvdiff = 'tensile_crack_nx51_ny101_ri3_ro7_nl6.csv'
+    rel_err = 1.0e-3
+    capabilities = 'unique_id & superlu'
+    requirement = 'The XFEM module shall compute stress intensity factors K_I and K_II for '
+                  'a 2D tensile-loaded edge crack via the interaction integral with '
+                  'crack-tip enrichment. K_I shall be accurate to within 0.3% of the '
+                  'exact value (11.2018). K_II shall be near zero (mode-I problem).'
+  []
+[]

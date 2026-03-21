@@ -1,0 +1,15 @@
+[Tests]
+  design = 'CrackTipNodeLayerSubdomainModifier.md SidesetAroundSubdomainUpdater.md'
+  issues = '#xfem_sif'
+
+  [crack_tip_subdom_modifier_propagation]
+    type = RunApp
+    input = 'elastic_test_sub_e_AD.i'
+    capabilities = 'unique_id & superlu'
+    requirement = 'The XFEM module shall dynamically assign an enriched subdomain around '
+                  'the crack tip using node-connectivity layers as the crack propagates. '
+                  'The SidesetAroundSubdomainUpdater shall keep the enriched interface '
+                  'boundary consistent with the updated subdomains. Both objects shall '
+                  'produce identical results in serial and parallel (MPI) runs.'
+  []
+[]

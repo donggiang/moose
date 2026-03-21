@@ -65,7 +65,6 @@ SidesetAroundSubdomainUpdater::SidesetAroundSubdomainUpdater(const InputParamete
     _displaced_boundary_info(
         _displaced_problem ? &_displaced_problem->mesh().getMesh().get_boundary_info() : nullptr)
 {
-    std::cout<<"********SidesetAroundSubdomainUpdater::SidesetAroundSubdomainUpdater : call constructure\n";
   // subdomains
   const auto & inner_subdomains = getParam<std::vector<SubdomainName>>("inner_subdomains");
   const auto & outer_subdomains = getParam<std::vector<SubdomainName>>("outer_subdomains");
@@ -177,7 +176,6 @@ SidesetAroundSubdomainUpdater::finalize()
   const auto & mesh = _mesh.getMesh();
   const auto * displaced_mesh =
       _displaced_problem ? &_displaced_problem->mesh().getMesh() : nullptr;
-    std::cout<<"***************SidesetAroundSubdomainUpdater::finalize() *************\n";
   // ------------------------------------------------------------------
   // 3) COMPLETELY REMOVE all nodes with this boundary id
   // ------------------------------------------------------------------

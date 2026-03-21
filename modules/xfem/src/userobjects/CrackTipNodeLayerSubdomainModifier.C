@@ -83,23 +83,29 @@ CrackTipNodeLayerSubdomainModifier::buildEnrichedElementSet()
 
   for (const auto * crack_point : crack_points)
   {
-    dof_id_type nearest_elem_id = DofObject::invalid_id;
-    Real min_distance_sq = std::numeric_limits<Real>::max();
+    dof_id_type local_nearest_id = DofObject::invalid_id;
+    Real local_min_sq = std::numeric_limits<Real>::max();
 
     for (const auto * elem : *_mesh.getActiveLocalElementRange())
     {
       const Real distance_sq = (elem->vertex_average() - *crack_point).norm_sq();
-      if (distance_sq < min_distance_sq)
+      if (distance_sq < local_min_sq)
       {
-        min_distance_sq = distance_sq;
-        nearest_elem_id = elem->id();
+        local_min_sq = distance_sq;
+        local_nearest_id = elem->id();
       }
     }
 
-    if (nearest_elem_id != DofObject::invalid_id)
+    // Global reduction: determine the minimum distance across all MPI ranks.
+    // Only the rank(s) holding the globally nearest element seed the BFS.
+    Real global_min_sq = local_min_sq;
+    _communicator.min(global_min_sq);
+
+    if (local_nearest_id != DofObject::invalid_id &&
+        local_min_sq <= global_min_sq * (1.0 + 1e-10) + 1e-30)
     {
-      _enriched_elem_ids.insert(nearest_elem_id);
-      frontier.insert(nearest_elem_id);
+      _enriched_elem_ids.insert(local_nearest_id);
+      frontier.insert(local_nearest_id);
     }
   }
 
@@ -134,6 +140,14 @@ CrackTipNodeLayerSubdomainModifier::buildEnrichedElementSet()
 
     frontier = std::move(next_frontier);
   }
+
+  // Synchronize the enriched element set across all MPI ranks.
+  // Each rank may have reached different elements through its local + ghost element graph.
+  // Allgathering ensures every rank has the complete set so that computeSubdomainID()
+  // gives consistent results regardless of how the mesh is partitioned.
+  std::vector<dof_id_type> all_ids(_enriched_elem_ids.begin(), _enriched_elem_ids.end());
+  _communicator.allgather(all_ids);
+  _enriched_elem_ids.insert(all_ids.begin(), all_ids.end());
 }
 
 SubdomainID

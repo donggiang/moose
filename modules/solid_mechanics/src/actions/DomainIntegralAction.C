@@ -137,6 +137,16 @@ DomainIntegralAction::validParams()
                         true,
                         "Flag to control the vector postprocessor outputs. Select false to "
                         "suppress the redundant csv files for each time step and ring");
+  params.addParam<std::vector<VariableName>>(
+      "enrichment_displacements",
+      {},
+      "Enrichment displacement variables for crack-tip enrichment (XFEM). "
+      "Provide 4*ndim variables ordered as all 4 functions for x, then y (then z in 3D).");
+  params.addParam<SubdomainID>(
+      "enriched_subdomain_id",
+      Moose::INVALID_BLOCK_ID,
+      "Subdomain ID of the enriched crack-tip region. Enriched DOFs are only accumulated "
+      "for elements in this subdomain.");
   return params;
 }
 
@@ -800,6 +810,17 @@ DomainIntegralAction::act()
       params.set<std::vector<VariableName>>("displacements") = _displacements;
       if (_temp != "")
         params.set<std::vector<VariableName>>("temperature") = {_temp};
+
+      if (isParamValid("enrichment_displacements"))
+      {
+        const auto & enr_disp =
+            getParam<std::vector<VariableName>>("enrichment_displacements");
+        if (!enr_disp.empty())
+          params.set<std::vector<VariableName>>("enrichment_displacements") = enr_disp;
+      }
+      if (isParamValid("enriched_subdomain_id"))
+        params.set<SubdomainID>("enriched_subdomain_id") =
+            getParam<SubdomainID>("enriched_subdomain_id");
 
       if (parameters().isParamValid("eigenstrain_gradient"))
         params.set<MaterialPropertyName>("eigenstrain_gradient") =
