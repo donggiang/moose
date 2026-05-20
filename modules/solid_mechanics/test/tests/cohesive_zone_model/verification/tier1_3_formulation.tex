@@ -1,0 +1,219 @@
+%=====================================================
+\section{Tier 1.3: Mathematical formulation}
+\label{sec:tier1_3}
+
+This section describes the governing equations corresponding to the input file
+\texttt{tier1\_3\_mode\_I\_load\_unload.i} and the analytical reference
+implemented in \texttt{verify\_tier1\_3.py}.
+
+%=====================================================
+\subsection{Test purpose}
+
+Tier 1.3 verifies three properties of \texttt{BiLinearMixedModeTraction}
+that Tier 1.1 cannot exercise because Tier 1.1 is monotonic:
+
+\begin{enumerate}
+\item correctness of the \emph{secant unload/reload} branch
+      $t_n = K(1-d)\,\delta_n$ with frozen damage,
+\item irreversibility of the damage internal variable
+      $\delta_n^{\max}$ (no healing during unload/reload),
+\item recovery of the bilinear envelope when reloading past the previously
+      attained maximum jump.
+\end{enumerate}
+
+%=====================================================
+\subsection{Domain, bulk, and interface}
+
+Geometry, mesh discretisation, bulk linear elasticity, and interface
+kinematics are identical to Tier 1.1
+(see Section~\ref{sec:tier1_1}). In short:
+
+\begin{equation}
+\Omega = \Omega_1\cup\Omega_2,\qquad
+\Gamma_c = \overline{\Omega_1}\cap\overline{\Omega_2},\qquad
+\jump{\bu} = \bu^{+}-\bu^{-},
+\end{equation}
+\begin{equation}
+\delta_n = \jump{\bu}\cdot\bn = \jump{u_y},\qquad
+\delta_t = \jump{\bu}\cdot\btan = \jump{u_x},
+\end{equation}
+\begin{equation}
+\nabla\!\cdot\bsigma = \bm{0}\ \ \text{in }\Omega_i,\qquad
+\bsigma = \mathbb{C}:\bm{\varepsilon},\qquad
+\bsigma\,\bn = \btrac\quad\text{on }\Gamma_c.
+\end{equation}
+
+%=====================================================
+\subsection{Bilinear law with damage as a state variable}
+
+Damage in the Camanho--D{\'a}vila bilinear model is driven by the
+\emph{maximum} jump ever attained at a quadrature point, an internal
+variable
+\begin{equation}
+\delta_n^{\max}(t) \;=\; \max_{\tau\in[0,t]}\;\delta_n(\tau)\,.
+\end{equation}
+This is what makes the law irreversible: $\delta_n^{\max}$ can only grow.
+The damage variable evaluated at $\delta_n^{\max}$ is
+\begin{equation}
+d\bigl(\delta_n^{\max}\bigr)
+\;=\;
+\begin{cases}
+0,
+& \delta_n^{\max} \le \delta_n^{0}, \\[6pt]
+\dfrac{\delta_n^{f}\,\bigl(\delta_n^{\max}-\delta_n^{0}\bigr)}
+       {\delta_n^{\max}\,\bigl(\delta_n^{f}-\delta_n^{0}\bigr)},
+& \delta_n^{0} < \delta_n^{\max} < \delta_n^{f}, \\[10pt]
+1,
+& \delta_n^{\max} \ge \delta_n^{f},
+\end{cases}
+\qquad d\in[0,1].
+\end{equation}
+The traction at the current jump $\delta_n$ uses the \emph{frozen} damage
+$d(\delta_n^{\max})$:
+\begin{equation}
+t_n\bigl(\delta_n,\;\delta_n^{\max}\bigr)
+\;=\;
+\begin{cases}
+\bigl(1-d(\delta_n^{\max})\bigr)\,K\,\delta_n, & \delta_n \ge 0, \\[4pt]
+K\,\delta_n, & \delta_n < 0\ \text{(closed contact)}.
+\end{cases}
+\end{equation}
+
+This piecewise rule contains every regime of interest:
+\begin{itemize}
+\item \textbf{Loading on the envelope} $\delta_n=\delta_n^{\max}$:
+      reduces to the Tier 1.1 bilinear curve.
+\item \textbf{Unloading} $\delta_n<\delta_n^{\max}$:
+      $\delta_n^{\max}$ is frozen, so the traction is a straight line
+      through the origin of slope $K(1-d(\delta_n^{\max}))$.
+\item \textbf{Reloading} $\delta_n<\delta_n^{\max}$:
+      retraces the same secant.
+\item \textbf{Reloading past the previous max} $\delta_n>\delta_n^{\max}$:
+      $\delta_n^{\max}$ updates to the new value and the trajectory rejoins
+      the bilinear envelope.
+\end{itemize}
+
+%=====================================================
+\subsection{Numerical parameters}
+
+Same as Tier 1.1:
+\begin{equation}
+K = 5.0\times10^{3},\qquad
+N = 50,\qquad
+G_{Ic} = 0.5,
+\end{equation}
+\begin{equation}
+\delta_n^{0} = N/K = 1.0\times10^{-2},\qquad
+\delta_n^{f} = 2 G_{Ic}/N = 2.0\times10^{-2}.
+\end{equation}
+
+The pre-selected unload point is the \emph{midpoint} of the softening
+branch:
+\begin{equation}
+\delta_n^{\star} \;=\; \tfrac{1}{2}\bigl(\delta_n^{0}+\delta_n^{f}\bigr)
+\;=\; 1.5\times10^{-2}.
+\end{equation}
+Closed-form landmarks at this point:
+\begin{equation}
+d^{\star} \;=\; d(\delta_n^{\star})
+\;=\; \frac{\delta_n^{f}\bigl(\delta_n^{\star}-\delta_n^{0}\bigr)}
+           {\delta_n^{\star}\bigl(\delta_n^{f}-\delta_n^{0}\bigr)}
+\;=\; \frac{2}{3},
+\end{equation}
+\begin{equation}
+K_{\text{secant}}^{\star} \;=\; K\bigl(1-d^{\star}\bigr)
+\;=\; \tfrac{5\,000}{3} \approx 1\,666.67,
+\end{equation}
+\begin{equation}
+t_n^{\star} \;=\; N\,\frac{\delta_n^{f}-\delta_n^{\star}}
+                          {\delta_n^{f}-\delta_n^{0}}
+\;=\; 25.
+\end{equation}
+
+%=====================================================
+\subsection{Loading and boundary conditions}
+
+The bottom face is fixed, the top face is constrained in $x$ and pulled in
+$y$ by a five-segment piecewise-linear function
+
+\begin{equation}
+u_*(t) \;=\;
+\begin{cases}
+\dfrac{0.010}{0.10}\,t,
+& 0.00 \le t \le 0.10,
+& \text{elastic loading} \\[6pt]
+0.010 + \dfrac{0.005}{0.10}(t-0.10),
+& 0.10 < t \le 0.20,
+& \text{softening to }\delta_n^{\star} \\[6pt]
+0.015 - \dfrac{0.015}{0.20}(t-0.20),
+& 0.20 < t \le 0.40,
+& \text{unload to zero} \\[6pt]
+0.000 + \dfrac{0.015}{0.20}(t-0.40),
+& 0.40 < t \le 0.60,
+& \text{reload to }\delta_n^{\star} \\[6pt]
+0.015 + \dfrac{0.015}{0.40}(t-0.60),
+& 0.60 < t \le 1.00,
+& \text{continue past }\delta_n^{f}.
+\end{cases}
+\end{equation}
+
+The end value $u_*(1)=0.030 = 1.5\,\delta_n^{f}$ guarantees full decohesion
+($d=1$) by the end of the simulation. The time step is
+$\Delta t = 0.005$, giving $200$ samples evenly distributed across the
+five branches.
+
+%=====================================================
+\subsection{Weak form}
+
+Identical to Tier 1.1:
+\begin{equation}
+\int_{\Omega_1\cup\Omega_2} \bsigma(\bu):\nabla\bv\,dV
+\;+\;
+\int_{\Gamma_c} \btrac\bigl(\jump{\bu},\,\delta_n^{\max}\bigr)\cdot
+                \jump{\bv}\,dS
+\;=\; 0,
+\end{equation}
+the only difference being that $\btrac$ now depends on the history variable
+$\delta_n^{\max}$ stored as a stateful material property in
+\texttt{BiLinearMixedModeTraction}.
+
+%=====================================================
+\subsection{Verification criterion}
+
+Let $\{(\delta_n^{(k)},\,t_n^{(k)})\}$ be the simulated samples and
+construct the running history variable
+\begin{equation}
+\delta_n^{\max,(k)} \;=\; \max_{j\le k}\;\max\bigl(\delta_n^{(j)},\,0\bigr).
+\end{equation}
+The closed-form reference is
+\begin{equation}
+t_n^{\text{ref},(k)}
+\;=\;
+\bigl(1 - d(\delta_n^{\max,(k)})\bigr)\,K\,\delta_n^{(k)}.
+\end{equation}
+The test passes if
+\begin{equation}
+\max_{k}\;\bigl|\,t_n^{(k)} - t_n^{\text{ref},(k)}\,\bigr|
+\;<\;10^{-7},
+\qquad
+\max_{k}\;|t_t^{(k)}|
+\;<\;10^{-10},
+\end{equation}
+and the running history variable is monotone,
+\begin{equation}
+\delta_n^{\max,(k+1)} \;\ge\; \delta_n^{\max,(k)} \quad\forall\,k.
+\end{equation}
+The last condition is automatically satisfied by the construction of
+$\delta_n^{\max}$, but it is asserted as a sanity check that the
+postprocessor output is consistent with damage irreversibility in the
+material.
+
+For the parameters above the simulation produced
+\begin{equation}
+\max_{k}\;\bigl|t_n - t_n^{\text{ref}}\bigr| \;=\; 2.4\times 10^{-12},\qquad
+\max_{k}\;|t_t| \;=\; 1.4\times 10^{-14},
+\end{equation}
+i.e.\ the bilinear law and its irreversibility logic are reproduced to
+roughly $13$ significant figures relative to the peak traction $N=50$.
+
+\end{document}

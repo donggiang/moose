@@ -1,0 +1,185 @@
+%=====================================================
+\section{Snap-back CZM benchmark}
+\label{sec:snap_back_czm}
+
+This section documents a snap-back demonstration of the Box~4.4 arc-length
+solver against a closed-form bilinear-cohesive + elastic-bulk envelope, and
+contrasts it with displacement-control standard Newton (which stalls at the
+peak load). Inputs:
+\texttt{snap\_back\_disp.i}, \texttt{snap\_back\_AL.i};
+verification: \texttt{verify\_snap\_back.py}.
+
+%=====================================================
+\subsection{Domain and model}
+
+Two stacked unit-square blocks $\Omega_1 = [0,1]\times[0,1]$ (bottom),
+$\Omega_2 = [0,1]\times[1,2]$ (top), separated by a cohesive interface
+$\Gamma_c$ at $y=1$ via \texttt{BreakMeshByBlockGenerator}. Plane strain.
+The bulk obeys isotropic linear elasticity $\bsigma = \mathbb{C}:\bm{\varepsilon}$
+with $E = 10^{4}~\text{MPa}$, $\nu = 0.3$. The interface obeys the bilinear
+mode-I traction--separation law
+\begin{equation}
+t_n(\delta_n) =
+\begin{cases}
+K\,\delta_n,                                            & 0 \le \delta_n \le \delta_0, \\[4pt]
+N\,\dfrac{\delta_f - \delta_n}{\delta_f - \delta_0},   & \delta_0 \le \delta_n \le \delta_f, \\[8pt]
+0,                                                      & \delta_n > \delta_f,
+\end{cases}
+\end{equation}
+with $K = 10^{5}$~MPa/mm, $N = 100$~MPa, $G_{Ic} = 0.25$~N/mm,
+$\delta_0 = N/K = 10^{-3}$~mm, $\delta_f = 2 G_{Ic}/N = 5\times 10^{-3}$~mm.
+
+%=====================================================
+\subsection{Snap-back condition}
+
+For two equal-height bulk blocks of height $h$ in series with the cohesive
+interface, the system load--displacement relation is
+\begin{equation}
+F(\delta_n) = t_n(\delta_n), \qquad
+u_{\rm top}(\delta_n) = \frac{F(\delta_n)}{K_e^{\rm tot}} + \delta_n,
+\end{equation}
+where $K_e^{\rm tot}$ is the effective bulk stiffness of the two blocks in
+series. Differentiating in the softening branch
+\begin{equation}
+\frac{d u_{\rm top}}{d \delta_n} =
+1 \;-\; \frac{1}{K_e^{\rm tot}}\,\frac{N}{\delta_f - \delta_0}.
+\end{equation}
+The right-hand side is negative whenever
+\begin{equation}
+\boxed{\;\frac{N}{\delta_f - \delta_0} \;>\; K_e^{\rm tot}\;}
+\label{eq:snap_back_condition}
+\end{equation}
+which is the snap-back criterion: the cohesive softening slope exceeds the
+elastic spring stiffness. The chosen parameters give the cohesive softening
+slope $N/(\delta_f - \delta_0) = 2.5\times 10^{4}$~MPa/mm and the measured
+$K_e^{\rm tot} \approx 5.87\times 10^{3}$~MPa/mm, ratio $\approx 4.3$ —
+strong snap-back.
+
+The peak top displacement is reached at $\delta_n = \delta_0$:
+\begin{equation}
+u_{\rm peak} \;=\; \delta_0\!\left(1 + \frac{K}{K_e^{\rm tot}}\right)
+\;\approx\; 0.0184~\text{mm}, \qquad F_{\rm peak} = N = 100~\text{MPa}.
+\end{equation}
+Beyond $u_{\rm peak}$ the curve folds back: $u_{\rm top}$ decreases while
+$\delta_n$ continues to grow.
+
+%=====================================================
+\subsection{Boundary conditions and loading}
+
+Bottom edge ($y = 0$): $u_x = u_y = 0$.
+Top edge ($y = 2$): $u_x = 0$.
+
+\begin{itemize}
+\item \textbf{Displacement-control baseline}
+      (\texttt{snap\_back\_disp.i}): impose $u_y\big|_{y=2} = u_*(t)$ ramping
+      monotonically to $u_*(1) = 0.030$, well past $u_{\rm peak}$. Standard
+      Newton with $dt = 0.02$.
+\item \textbf{Arc-length}
+      (\texttt{snap\_back\_AL.i}): impose
+      $\bm{t}\big|_{y=2} = \lambda\,\sigma_{\rm ref}\,\bm{e}_y$ via
+      \texttt{ALCoupledScaledNeumannBC} with $\sigma_{\rm ref} = 100$~MPa.
+      \texttt{ArcLengthTransient} with $\Delta s = 5\times 10^{-3}$.
+\end{itemize}
+
+To avoid the degenerate zero-tangent corner of the bilinear law at exactly
+$\delta_n = 0$ (\texttt{BiLinearMixedModeTraction} returns
+$\partial t_n/\partial \delta_n = 0$ when $\delta_n = 0$ exactly, making
+$\bm{K}_T$ singular before any deformation), the AL run uses a small
+initial offset $u_y\big|_{\Omega_2}^{t=0} = 10^{-7}$~mm. This is a
+$2\times 10^{-5}$~fraction of $\delta_0$ and does not perturb the
+trajectory.
+
+%=====================================================
+\subsection{Corrector root selection at limit points}
+
+The cylindrical AL quadratic
+$a\,\delta\lambda^2 + b\,\delta\lambda + c = 0$ has two roots. The classical
+Crisfield criterion picks the root that maximises
+$\Delta\bu^{(k)} \!\cdot\! \Delta\bu^{(k-1)}$. At sharp turning points
+(e.g., the peak of a snap-back curve) this criterion can lock onto the
+forward branch and oscillate. We instead pick the root that minimises
+$\|\bm{r}\|$ at the candidate state:
+\begin{equation}
+\delta\lambda^{(k)} \;=\; \arg\min_{\xi\,\in\,\{x_1, x_2\}}\,
+\bigl\|\bm{r}\bigl(\bu^{(k-1)} + \delta\bu^{*} + \xi\,\delta\bar{\bu},\,
+                   \lambda^{(k-1)} + \xi\bigr)\bigr\|.
+\end{equation}
+This costs two extra residual evaluations per corrector iteration but
+selects the branch on which equilibrium is actually reachable, which is
+necessary to traverse the snap-back fold.
+
+%=====================================================
+\subsection{Result}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{rrrrrrr}
+\toprule
+step & $\lambda$ & $\delta_n$ [mm] & $u_{\rm top}$ [mm] & $t_n$ [MPa] & branch \\
+\midrule
+0  & $0.000$ & $0.000$         & $0.000$           & $0.0$   & rest \\
+1  & $0.158$ & $1.6\times 10^{-4}$ & $0.00285$ & $15.8$  & elastic \\
+3  & $0.473$ & $4.7\times 10^{-4}$ & $0.00854$ & $47.3$  & elastic \\
+6  & $0.947$ & $9.5\times 10^{-4}$ & $0.01708$ & $94.7$  & elastic, near peak \\
+\midrule
+7  & $0.718$ & $2.1\times 10^{-3}$ & $0.01436$ & $71.8$  & \textbf{post-snap-back} \\
+8  & $0.505$ & $3.0\times 10^{-3}$ & $0.01159$ & $50.5$  & softening \\
+9  & $0.292$ & $3.8\times 10^{-3}$ & $0.00881$ & $29.2$  & softening \\
+10 & $0.080$ & $4.7\times 10^{-3}$ & $0.00604$ & $8.0$   & near full decohesion \\
+\bottomrule
+\end{tabular}
+\caption{Box 4.4 arc-length trajectory through the snap-back. Step 7
+demonstrates the fold: both $\lambda$ and $u_{\rm top}$ decreased relative
+to step 6 while $\delta_n$ more than doubled.}
+\end{table}
+
+The displacement-control baseline converges identically through the loading
+branch, then time-step bisects to the minimum permitted $dt$ at
+$u_{\rm top} \approx u_{\rm peak}$ without progress: no equilibrium with
+$\delta_n > \delta_0$ exists at any $u_{\rm top} > u_{\rm peak}$ (the curve
+has folded back).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{snap_back_compare.png}
+\caption{Left: the snap-back load--displacement curve. The Box 4.4
+arc-length traces the full envelope; standard Newton (displacement control)
+stalls at the peak and bisects to dtmin. Right: the AL parameterisation
+$(\delta_n, \lambda)$ — both the elastic-loading branch
+($\delta_n < \delta_0$) and the softening branch ($\delta_0 < \delta_n
+< \delta_f$) are tracked monotonically.}
+\label{fig:snap_back_compare}
+\end{figure}
+
+\paragraph{Verification metric.} For each AL sample point, the simulated
+interface traction is compared against the analytical bilinear envelope
+$t_n^{\rm ref}(\delta_n)$:
+\begin{equation}
+\max_{\rm AL\ pts} \bigl|t_n^{\rm sim} - t_n^{\rm ref}(\delta_n^{\rm sim})\bigr|
+\;<\; 10^{-6}~\text{MPa}.
+\end{equation}
+Measured: $5\times 10^{-13}$~MPa — every AL point sits exactly on the
+analytical envelope (limited only by floating-point arithmetic). The
+benchmark passes.
+
+%=====================================================
+\subsection{What this exercise demonstrates}
+
+\begin{itemize}
+\item The Box~4.4 arc-length implementation in \texttt{solid\_mechanics}
+      handles a softening interface problem with a structurally enforced
+      snap-back (Eq.~\eqref{eq:snap_back_condition}).
+\item Standard displacement control fails on this problem at the load peak:
+      no monotone $u_{\rm top}$ path exists past the snap-back fold.
+\item The bilinear traction--separation law's zero-tangent corner at
+      $\delta_n = 0$ requires either (i) a small initial offset
+      ($10^{-7}$~mm here), (ii) a switch to a cohesive law with positive
+      tangent at $\delta_n = 0$, or (iii) a one-character change in
+      \texttt{BiLinearMixedModeTraction.C} so the active branch tangent is
+      used at the boundary case $\delta_n = 0$.
+\item For corrector root selection at sharp turning points, residual-norm
+      minimisation is more robust than Crisfield's max-dot-product
+      criterion, at the cost of two extra residual evaluations per
+      corrector iteration.
+\end{itemize}

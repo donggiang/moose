@@ -1,0 +1,198 @@
+%=====================================================
+\section{Arc-length: Box 4.4 (cylindrical / Riks) formulation}
+\label{sec:arclength_box44}
+
+This section documents the cylindrical arc-length implementation in the
+\texttt{solid\_mechanics} module corresponding to the input file
+\texttt{arclength\_box44\_bar.i} and the verification script
+\texttt{verify\_arclength\_box44\_bar.py}.
+
+The algorithm is the \emph{non-consistent two-solve scheme}, Box~4.4 of
+de~Souza~Neto, Peri\'{c}, Owen, \emph{Computational Methods for Plasticity}
+(Wiley 2008), \S4.4.2.
+
+%=====================================================
+\subsection{Augmented system}
+
+Standard quasi-static equilibrium with proportional loading reads
+\begin{equation}
+\bm{r}(\bu, \lambda) \;=\; \bm{f}_{\rm int}(\bu) \;-\; \lambda\, \hat{\bm{q}} \;=\; \bm{0},
+\end{equation}
+where $\bu \in \mathbb{R}^{n}$ collects the displacement degrees of freedom,
+$\hat{\bm{q}} \in \mathbb{R}^{n}$ is the (fixed) reference external load, and
+$\lambda \in \mathbb{R}$ is the load factor. We add the cylindrical arc-length
+constraint
+\begin{equation}
+g(\Delta\bu) \;=\; \Delta\bu^{\top}\Delta\bu \;-\; \Delta s^2 \;=\; 0,
+\qquad \Delta\bu = \bu - \bu_{n},
+\end{equation}
+where $\bu_{n}$ is the converged solution at the previous outer step and
+$\Delta s$ is the user-prescribed arc-length increment.
+
+%=====================================================
+\subsection{Box 4.4 inner Newton iteration}
+
+Within one outer arc-length step, the iteration $k=1,2,\dots$ proceeds as
+
+\begin{enumerate}
+\item Assemble $\bm{K}_T = \partial \bm{f}_{\rm int}/\partial \bu$ at $\bu^{(k-1)}$.
+
+\item Two linear solves with the \emph{same} stiffness:
+\begin{align}
+\bm{K}_T\,\delta\bu^{*} &= -\bm{r}^{(k-1)}, \\
+\bm{K}_T\,\delta\bar{\bu} &= +\hat{\bm{q}}.
+\end{align}
+
+\item Compute the iterative load increment $\delta\lambda^{(k)}$:
+\begin{itemize}
+\item For $k=1$ (\emph{predictor}):
+\begin{equation}
+\delta\lambda^{(1)} \;=\; \pm\,\frac{\Delta s}{\sqrt{\delta\bar{\bu}^{\top}\delta\bar{\bu}}},
+\qquad
+\text{sign} \;=\; \mathrm{sgn}\!\left(\Delta\bu_{\rm old}^{\top}\,\delta\bar{\bu}\right),
+\end{equation}
+defaulting to $+1$ on the first ever step. Here $\Delta\bu_{\rm old}$
+is the previous \emph{converged} step's increment. Because
+$\delta\bar{\bu} = \bm{K}_T^{-1}\hat{\bm{q}}$ is the elastic response to
+the reference load, $\delta\bar{\bu}^{\top}\delta\bar{\bu} > 0$ by
+construction, so the predictor has no first-step degeneracy.
+
+\item For $k>1$ (\emph{corrector}): solve the scalar quadratic
+\begin{equation}
+a\,(\delta\lambda)^2 \;+\; b\,\delta\lambda \;+\; c \;=\; 0,
+\end{equation}
+with
+\begin{align}
+a &= \delta\bar{\bu}^{\top}\delta\bar{\bu}, \\
+b &= 2\,(\Delta\bu^{(k-1)} + \delta\bu^{*})^{\top}\delta\bar{\bu}, \\
+c &= (\Delta\bu^{(k-1)} + \delta\bu^{*})^{\top}(\Delta\bu^{(k-1)} + \delta\bu^{*}) - \Delta s^2.
+\end{align}
+Pick the root that maximises $\Delta\bu^{(k)}\!\cdot\!\Delta\bu^{(k-1)}$
+(Crisfield 1991), where
+\begin{equation}
+\Delta\bu^{(k)} \;=\; \Delta\bu^{(k-1)} + \delta\bu^{*} + \delta\lambda\,\delta\bar{\bu}.
+\end{equation}
+\end{itemize}
+
+\item Update load factor and displacement:
+\begin{equation}
+\lambda^{(k)} = \lambda^{(k-1)} + \delta\lambda^{(k)},
+\qquad
+\delta\bu^{(k)} = \delta\bu^{*} + \delta\lambda^{(k)}\,\delta\bar{\bu},
+\qquad
+\bu^{(k)} = \bu^{(k-1)} + \delta\bu^{(k)}.
+\end{equation}
+
+\item Recompute residual at $(\bu^{(k)}, \lambda^{(k)})$ and check
+\begin{equation}
+\frac{\|\bm{r}^{(k)}\|}{\max(|\lambda^{(k)}|, 1)\,\|\hat{\bm{q}}\|} \;<\; \varepsilon_r.
+\end{equation}
+\end{enumerate}
+
+%=====================================================
+\subsection{MOOSE implementation}
+
+The algorithm is implemented entirely in MOOSE/libMesh, without any PETSc
+SNES extensions. The architectural choices that proved necessary are:
+
+\paragraph{$\lambda$ is an \texttt{AuxScalarVariable}, not a NL DOF.}
+Putting $\lambda$ in the nonlinear system without a kernel filling its row
+makes the assembled $\bm{K}$ singular at the $\lambda$ row, producing a
+garbage $\delta\bar{\bu}$ from $\bm{K}_T\,\delta\bar{\bu}=\hat{\bm{q}}$.
+Treating $\lambda$ as an externally controlled scalar — written into the
+auxiliary system by \texttt{ArcLengthSolveObject} and read by the loading
+BC via \texttt{coupledScalarValue} — keeps $\bm{K}_T$ a pure displacement
+stiffness.
+
+\paragraph{Reference load cached once.}
+$\hat{\bm{q}}$ is obtained at the first call to \texttt{solve()} via
+\begin{equation}
+\hat{\bm{q}} \;=\; \bm{r}(\bu, \lambda{=}0) \;-\; \bm{r}(\bu, \lambda{=}1),
+\end{equation}
+which equals $\hat{\bm{q}}$ exactly under the proportional-loading
+assumption used by the BC \texttt{ALCoupledScaledNeumannBC}. It is never
+recomputed.
+
+\paragraph{System update after solution writes.}
+Both
+\texttt{\_aux\_sys->system().update()} (after writing $\lambda$) and
+\texttt{nl.system().update()} (after writing $\bu^{(k)}$) are required so
+that variable reinit, which reads from \texttt{current\_local\_solution},
+sees the new global state.
+
+The objects that ship with the implementation are
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\texttt{ArcLengthSolveObject} & inner solve performing Box~4.4 \\
+\texttt{ArcLengthTransient} & \texttt{Transient} executioner injecting the AL solve \\
+\texttt{ALCoupledScaledNeumannBC} & contributes $-\lambda\,\hat{q}\,\phi_i$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%=====================================================
+\subsection{Linear-elastic bar verification}
+\label{subsec:arclength_box44_bar}
+
+\paragraph{Domain and BCs.}
+Plane-strain $10\times 1$ rectangle. The left edge is fully clamped:
+$u_x = u_y = 0$ on $x=0$. The right edge ($x = L$) is loaded with the
+arc-length-scaled Neumann traction
+\begin{equation}
+\bm{t}\big|_{x=L} \;=\; \lambda\,\sigma_{\rm ref}\,\bm{e}_x,
+\qquad \sigma_{\rm ref} = 10^{3}~\text{MPa}.
+\end{equation}
+
+\paragraph{Material and parameters.}
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+Symbol & Meaning & Value \\
+\midrule
+$E$ & Young's modulus & $10^{5}~\text{MPa}$ \\
+$\nu$ & Poisson's ratio & $0.3$ \\
+$L$ & bar length & $10~\text{mm}$ \\
+$\sigma_{\rm ref}$ & reference end traction & $10^{3}~\text{MPa}$ \\
+$\Delta s$ & arc-length step & $10^{-2}$ \\
+$\varepsilon_r$ & relative residual tolerance & $10^{-6}$ \\
+$N_{\rm steps}$ & number of outer steps & $10$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Closed form.}
+For uniaxial stress in plane strain ($\sigma_{yy}=\sigma_{zz}=0$, $\varepsilon_{zz}=0$),
+the effective modulus is
+\begin{equation}
+E_{\rm eff} \;=\; \frac{E}{1-\nu^{2}} \;=\; \frac{10^{5}}{0.91} \;\approx\; 1.0989\times 10^{5}~\text{MPa}.
+\end{equation}
+The tip displacement at load factor $\lambda$ is then
+\begin{equation}
+u_{\rm tip}^{\rm LEFM}(\lambda) \;=\; \lambda\,\frac{\sigma_{\rm ref}\,L}{E_{\rm eff}} \;=\; \lambda\cdot 0.0910~\text{mm}.
+\label{eq:arclength_lefm}
+\end{equation}
+
+\paragraph{Result.}
+The simulation traces a strictly linear $(\lambda, u_{\rm tip})$ trajectory.
+A least-squares fit on the ten converged outer steps gives
+\begin{equation}
+\frac{u_{\rm tip}^{\rm sim}}{\lambda} \;=\; 0.09063~\text{mm},
+\qquad
+\frac{|0.09063 - 0.09100|}{0.09100} \;=\; 0.40\,\%,
+\end{equation}
+well inside the $0.5\,\%$ acceptance tolerance. Each outer step converges
+in a single Newton iteration with $\|\bm{r}\|/\|\lambda\,\hat{\bm{q}}\|
+\sim 10^{-15}$, consistent with linear elasticity reaching equilibrium
+exactly at the predictor step.
+
+\paragraph{Verification criterion.}
+The pass criterion for this benchmark is
+\begin{equation}
+\frac{|m_{\rm sim} - m_{\rm LEFM}|}{m_{\rm LEFM}} \;<\; 5\times 10^{-3},
+\qquad
+m \;=\; \frac{u_{\rm tip}}{\lambda},
+\end{equation}
+which is satisfied with $0.40\,\%$ measured.

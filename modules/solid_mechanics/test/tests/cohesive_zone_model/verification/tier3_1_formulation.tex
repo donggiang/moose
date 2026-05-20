@@ -1,0 +1,165 @@
+%=====================================================
+\section{Tier 3.1: J-integral / dissipated-energy conservation}
+\label{sec:tier3_1}
+
+This section documents the governing equations and verification logic for
+\texttt{tier3\_1\_jintegral.i} and the analytical reference implemented in
+\texttt{verify\_tier3\_1.py}.
+
+%=====================================================
+\subsection{Test purpose}
+
+Tier 3.1 verifies an \emph{integral} property of the cohesive law that the
+pointwise tests (Tier 1.1--1.5) cannot reach by construction:
+the energy dissipated per unit interface area at full decohesion equals
+the input fracture toughness $G_{Ic}$.
+
+In the small-strain limit this reduces to a one-line statement of Rice's
+contour-independence theorem applied to the cohesive interface
+$\Gamma_c$:
+\begin{equation}
+J \;=\;
+\int_{0}^{\delta_n^{f}} t_n(\delta_n)\,d\delta_n
+\;=\; \tfrac{1}{2}\,N\,\delta_n^{f}
+\;=\; G_{Ic}.
+\label{eq:Jintegral}
+\end{equation}
+
+What the test catches that Tier 1 does not:
+\begin{enumerate}
+\item a wrong interface measure $|\Gamma_c|$ in the surface (or line)
+      integral,
+\item a finite-strain reference--current configuration mix-up that scales
+      the area mapping incorrectly while leaving the pointwise curve
+      unchanged,
+\item a sign error in the traction direction during integration.
+\end{enumerate}
+The first item is exercised here through an explicit \texttt{AreaPostprocessor}.
+The second and third are exercised by the \emph{template} the test
+provides; they become non-trivial in the finite-strain analogue.
+
+%=====================================================
+\subsection{Domain and loading}
+
+Geometry, mesh, bulk material, and boundary conditions are identical to
+Tier 1.1: a single-element mode-I monotonic pull on a $1\times 2$ unit
+mesh with a horizontal cohesive interface $\Gamma_c=\{(x,y):\,0\le x\le1,\,
+y=1\}$ split by \texttt{BreakMeshByBlockGenerator}.
+The bottom face is clamped, the top face is constrained in $x$ and pulled
+in $y$ by the same piecewise-linear function $u_*(t)$ used in Tier 1.1,
+ramped past $u_*(1)=1.5\,\delta_n^{f}=0.03$ to guarantee complete
+decohesion.
+
+%=====================================================
+\subsection{Two estimators of the cumulative work}
+
+The verifier computes the cumulative work done per unit interface area by
+the cohesive traction along the simulated trajectory two ways.
+
+\paragraph{Trapezoidal-rule estimator.}
+Sampled at the simulation time steps,
+\begin{equation}
+W_{\text{trap}}(t_k) \;=\;
+\sum_{j=1}^{k} \tfrac{1}{2}\bigl(t_n^{(j)}+t_n^{(j-1)}\bigr)
+                       \bigl(\delta_n^{(j)}-\delta_n^{(j-1)}\bigr).
+\label{eq:Wtrap}
+\end{equation}
+This is the discrete, observation-only integral. It has trapezoidal-rule
+error $O(\Delta t^{\,2})$ on smooth segments and $O(\Delta t)$ at the
+bilinear-law kink at $\delta_n^{0}$.
+
+\paragraph{Closed-form estimator.}
+Using the running internal variable $\delta_n^{\max}$, the energy actually
+dissipated by the bilinear law is
+\begin{equation}
+W_{\text{exact}}(\delta_n^{\max})
+\;=\;
+W_{\text{env}}(\delta_n^{\max})
+\;-\; \tfrac{1}{2}\,(1-d)\,K\,\bigl(\delta_n^{\max}\bigr)^{2},
+\label{eq:Wexact}
+\end{equation}
+where $W_{\text{env}}$ is the area swept under the bilinear envelope from
+$0$ up to the running max, $d=d(\delta_n^{\max})$ is the damage variable,
+and the second term subtracts the elastic energy still stored in the
+interface at the current state. For the bilinear law this evaluates to
+\begin{equation}
+W_{\text{exact}}(\delta_n^{\max}) =
+\begin{cases}
+0,
+& \delta_n^{\max} \le \delta_n^{0}, \\[6pt]
+\dfrac{1}{2}\,K\,\delta_n^{0}\,
+\dfrac{\delta_n^{\max}-\delta_n^{0}}{\delta_n^{f}-\delta_n^{0}}\,\delta_n^{f},
+& \delta_n^{0}<\delta_n^{\max}<\delta_n^{f}, \\[12pt]
+G_{Ic},
+& \delta_n^{\max} \ge \delta_n^{f}.
+\end{cases}
+\label{eq:Wexact_piecewise}
+\end{equation}
+The third branch is exact: the bilinear law dissipates exactly $G_{Ic}$ at
+full failure, so the closed-form estimator hits the target by construction.
+
+\paragraph{Total work.}
+Both per-area estimators are multiplied by the interface measure
+$|\Gamma_c|$, reported by the in-MOOSE \texttt{AreaPostprocessor}:
+\begin{equation}
+W^{\,\text{tot}}_{\!\text{trap}}(t_k) = W_{\text{trap}}(t_k)\cdot|\Gamma_c|,
+\qquad
+W^{\,\text{tot}}_{\!\text{exact}}(t_k) = W_{\text{exact}}(\delta_n^{\max,(k)})\cdot|\Gamma_c|.
+\end{equation}
+
+%=====================================================
+\subsection{Verification criterion}
+
+The test passes when \emph{both} estimators land on $G_{Ic}\cdot|\Gamma_c|$
+at the end of the simulation:
+\begin{equation}
+\bigl|\,W^{\,\text{tot}}_{\!\text{exact}}(t_{\text{end}}) - G_{Ic}\,|\Gamma_c|\,\bigr|
+\;<\;10^{-9},
+\qquad
+\bigl|\,W^{\,\text{tot}}_{\!\text{trap}}(t_{\text{end}})  - G_{Ic}\,|\Gamma_c|\,\bigr|
+\;<\;10^{-3}.
+\end{equation}
+The first inequality is a check on the cohesive law's damage-state
+bookkeeping (it must arrive at $d=1$ with the correct
+$\delta_n^{\max}\ge\delta_n^{f}$). The second is an integration cross-check
+that catches any post-processing bug that might inflate or deflate
+$\int t_n\,d\delta_n$ relative to the law itself.
+
+%=====================================================
+\subsection{Results}
+
+For the parameters of Tier 1.1 ($K=5\times10^{3}$, $N=50$, $G_{Ic}=0.5$,
+$|\Gamma_c|=1$) the verifier reports
+\begin{align}
+W^{\,\text{tot}}_{\!\text{exact}}(t_{\text{end}}) &= 0.500\,000\,000\,0
+\quad\Rightarrow\quad
+|\,\cdot - G_{Ic}\,| = 0,\\[2pt]
+W^{\,\text{tot}}_{\!\text{trap}}(t_{\text{end}})  &= 0.499\,999\,952\,7
+\quad\Rightarrow\quad
+|\,\cdot - G_{Ic}\,| = 4.7\times 10^{-8}.
+\end{align}
+Both inside the respective tolerances by many orders of magnitude. The
+trapezoidal residual is the kink-region quadrature error and shrinks as
+$O(\Delta t)$ if the time step is refined.
+
+%=====================================================
+\subsection{Why the two estimators disagree \emph{during} the simulation}
+
+The two estimators measure different quantities until full failure is
+reached. The trap-rule estimator integrates the \emph{total} work done
+by the traction, which equals
+\[
+W_{\text{trap}}(t) \;=\; W_{\text{diss}}(t) + U_{\text{elastic}}(t),
+\]
+i.e.\ dissipated energy plus the still-stored elastic energy in the
+cohesive ``spring''. During the elastic loading branch
+$\delta_n\le\delta_n^{0}$, the trap-rule estimator rises while the
+closed-form estimator is identically zero (no damage yet, all stored).
+Past the softening branch the trap-rule keeps rising and the closed-form
+catches up; both meet at $G_{Ic}\,|\Gamma_c|$ when
+$\delta_n\ge\delta_n^{f}$ because at that point $d=1$ and
+$U_{\text{elastic}}=0$. The plot
+\texttt{tier3\_1\_jintegral\_compare.png} shows this behaviour
+explicitly.
+
+\end{document}

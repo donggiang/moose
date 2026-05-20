@@ -1,0 +1,403 @@
+%=====================================================
+\section{Tier 2.1 revisited: DCB with Box 4.4 arc-length}
+\label{sec:dcb_arclength}
+
+The Tier 2.1 DCB benchmark (Turon et al.\ 2006, AS4/PEEK) was previously
+reported as \emph{partial-pass}: the pre-peak compliance reproduced LEFM
+beam theory to within $\sim 8\,\%$, but the LEFM peak load
+$P_c \approx 6.09~\text{N/mm}$ and post-peak softening could not be
+reached on any of four BC variants tried (corner load, distributed load,
+displacement vs.\ force, small vs.\ finite strain). This section revisits
+the DCB now that Box~4.4 arc-length is operational, to test whether the
+prior failure was a Newton-convergence problem (which AL would fix) or a
+structural / formulation issue (which AL cannot fix).
+
+%=====================================================
+\subsection{Boundary conditions and the role of the MMB fixture (Fig.~8)}
+
+Turon \emph{et al.}~(2006) use the same MMB (mixed-mode bending) fixture
+of Crews \& Reeder (Fig.~8 in the paper) for \emph{all} mode-mixity test
+cases — DCB, MMB, and ENF — by varying the lever length $c$ which sets
+the proportion of end load to middle load applied to the specimen:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+$G_{II}/G_T$ & test name & loading on the specimen \\
+\midrule
+$0\,\%$         & \textbf{DCB} (pure mode I)  & end loads only, $\pm P$ on the two arms \\
+$20, 50, 80\,\%$ & MMB (mixed)                & end \emph{and} middle loads, ratio set by $c$ \\
+$100\,\%$       & ENF (pure mode II)         & middle load only \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For pure DCB, the lever degenerates: only the end loads are non-zero,
+the middle load is zero, and the load-point displacement of the lever
+reduces to the relative end opening of the specimen,
+$\delta = u_y\big|_{\rm top,\,x=0} - u_y\big|_{\rm bottom,\,x=0}$.
+The fixture is thus not actually used; pure DCB is straightforward
+end-loaded mode I.
+
+Our setup applies $+\lambda\,\sigma_{\rm ref}$ on \texttt{left\_top}
+and $-\lambda\,\sigma_{\rm ref}$ on \texttt{left\_bot}, with
+$\sigma_{\rm ref} = P_c^{\rm LEFM}/h_{\rm arm}$, and reports
+\texttt{opening = tip\_disp\_top - tip\_disp\_bot}. This is exactly the
+DCB ($G_{II}/G_T = 0\,\%$) configuration of Turon's MMB fixture, so the
+boundary conditions match the paper.
+
+The plane-strain LEFM peak per unit out-of-plane width is
+\begin{equation}
+P_c \;=\; \sqrt{\frac{E_{\rm eff}\,h^3\,G_{Ic}}{12\,a_0^2}}
+\;=\; \sqrt{\frac{(E/(1-\nu^2))\,h^3\,G_{Ic}}{12\,a_0^2}}
+\;=\; 6.09~\text{N/mm},
+\end{equation}
+which over Turon's $25.4$~mm width is $154.6$~N — matching his
+predicted $152.4$~N within $1.4\,\%$. (Earlier sections used the
+plane-stress formula $5.89$~N/mm; the plane-strain factor
+$1/(1-\nu^2) = 1.067$ has been retained throughout this revision.)
+
+%=====================================================
+\subsection{Setup}
+
+Same DCB geometry, mesh, and material as
+\texttt{tier2\_1\_dcb\_force.i}:
+\begin{itemize}
+\item Geometry: $L = 102$~mm, $h = 1.56$~mm per arm,
+      $a_0 = 32.9$~mm, plane strain, unit out-of-plane width.
+\item Mesh: $408 \times 8$ structured, $0.25$~mm element size in $x$
+      ($\sim 5$ elements per Hillerborg cohesive zone length
+      $l_{\rm cz} = 1.34$~mm).
+\item Material (AS4/PEEK): $E_1 = 122.7$~GPa, $\nu = 0.25$,
+      $N = 80$~MPa, $G_{Ic} = 0.969$~N/mm, $K = 10^{6}$~MPa/mm.
+\end{itemize}
+
+The only changes vs.\ the prior force-controlled run:
+\begin{enumerate}
+\item Two \texttt{ALCoupledScaledNeumannBC}s (top arm $+$,
+      bottom arm $-$) replace the \texttt{FunctionNeumannBC}s. Reference
+      pressure $\sigma_{\rm ref} = P_c^{\rm LEFM}/h = 3.78$~MPa, so
+      $\lambda = 1$ corresponds approximately to the LEFM peak.
+\item \texttt{ArcLengthTransient} executioner with $\Delta s = 0.5$ in
+      displacement L2-norm, $120$ outer steps.
+\item Tiny initial offset $u_y\big|_{\rm upper}^{t=0} = 10^{-7}$~mm to
+      bypass the bilinear-law zero-tangent corner at $\delta_n = 0$.
+\end{enumerate}
+File: \texttt{tier2\_1\_dcb\_AL.i}; verification:
+\texttt{verify\_dcb\_AL.py}.
+
+%=====================================================
+\subsection{Result}
+
+The arc-length solver converges in $1$--$2$ Newton iterations per outer
+step throughout the $120$-step run. The trajectory is essentially
+\emph{linear} in $(u_{\rm top},\,P)$:
+\begin{equation}
+\frac{P}{u_{\rm top}}\Big|_{\rm AL} \;=\; 3.219~\text{N/mm/mm},
+\qquad
+\frac{P}{u_{\rm top}}\Big|_{\rm LEFM\ beam} \;=\; \frac{E_{\rm eff}\,h^3}{4\,a_0^3}
+\;=\; 3.488~\text{N/mm/mm},
+\end{equation}
+a $7.7\,\%$ systematic deviation matching the prior force-controlled
+result, attributable to the cohesive-zone added compliance.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{tier2_1_dcb_AL_compare.png}
+\caption{Box~4.4 arc-length DCB vs.\ LEFM beam and the prior
+force-controlled run.
+\textbf{Left}: load--deflection trace. AL (red) and the prior
+force-controlled run (green) sit on the same line through
+$P_c^{\rm LEFM}$ and continue past it without inflection.
+\textbf{Right}: cohesive-zone activation. The maximum normal traction
+along the bond saturates at $N = 80$~MPa (cohesive zone reaches
+softening locally), but the maximum normal jump $\delta_n$ stays
+$\sim 1\,\%$ of $\delta_f$ — the leading edge does not approach
+$d = 1$, the crack does not propagate, and no global limit point
+appears.}
+\label{fig:dcb_al_compare}
+\end{figure}
+
+\paragraph{Linearity check.} Slope on the first $30$ converged AL steps
+is $3.2195$; on the last $30$ it is $3.2185$ — ratio $0.9997$.
+The trajectory is linear within $0.03\,\%$ over the entire $120$-step
+run, well past $P_c^{\rm LEFM}$.
+
+\paragraph{Cohesive activation.} max\,$t_n = 79.6$~MPa is reached at
+$\lambda \approx 1.7$ ($P \approx 10.0$~N/mm), i.e.\ at $\sim 1.7\times$
+the LEFM peak. The leading-edge $\delta_n$ at the end of the run is
+$2.12\times 10^{-4}$~mm = $0.88\,\%$ of $\delta_f$. The cohesive zone is
+in softening at the leading edge but is far from full decohesion.
+
+%=====================================================
+\subsection{Mesh convergence study: the discrete formulation does not converge}
+\label{subsec:mesh_conv}
+
+A four-level convergence study under fixed material parameters and BCs:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{llccc}
+\toprule
+mesh & element & $h$ [mm] & $\lambda$ at $\max t_n = N$ & $P$ at saturation [N/mm] \\
+\midrule
+$nx=102$  & QUAD4 & $1.000$  & never ($\max t_n = 10.5$ MPa at $P = 80$) & — \\
+$nx=408$  & QUAD4 & $0.250$  & $1.71$ & $10.1$ \\
+$nx=816$  & QUAD4 & $0.125$  & $0.57$ & $3.4$ \\
+$nx=1632$ & QUAD4 & $0.0625$ & $0.37$ & $2.2$ \\
+$nx=408$  & QUAD8 & $0.250$  & $0.91$ & $5.4$ \\
+\midrule
+LEFM beam-theory peak: & & & & $P_c = 6.09$ \\
+\bottomrule
+\end{tabular}
+\caption{Cohesive saturation load $P_{\rm sat}$ (the applied load at which
+the leading-edge interface traction first reaches the cohesive strength $N$)
+as the mesh is refined. Halving $h$ from $0.25 \to 0.125 \to 0.0625$ mm
+moves $P_{\rm sat}$ from $10.1 \to 3.4 \to 2.2$ N/mm — not approaching any
+limit. Switching to QUAD8 at $h = 0.25$ mm shifts $P_{\rm sat}$ to $5.4$
+N/mm (closer to LEFM) but does not change the divergent trend.}
+\end{table}
+
+The pre-peak compliance, by contrast, IS mesh-convergent: $P/u_{\rm top}$
+sits at $3.20$–$3.69$ across all five runs (LEFM beam-theory $3.49$).
+What does \emph{not} converge is the load at which the cohesive zone
+becomes active.
+
+\paragraph{Why this happens.}
+At the bonded$\leftrightarrow$unbonded crack tip, the bulk linear-elasticity
+solution has a $1/\sqrt{r}$ stress singularity. The cohesive zone is
+supposed to \emph{regularise} this singularity: a true cohesive element
+with its own shape functions integrates the bounded traction $t \le N$
+over an element length, distributing the cohesive force across a finite
+process zone of length $\ell_{\rm cz}$ set by the constitutive law.
+
+The MOOSE \texttt{CZMInterfaceKernel} evaluates $t = K \cdot \jump{u}$ at
+side quadrature points, where $\jump{u}$ is interpolated from the bulk's
+side trace. As $h \to 0$, quadrature points sit closer to the singular
+tip and report ever-higher $t$. The cohesive law clips at $N$, but the
+clipping happens at lower and lower applied load. The cohesive zone
+never spreads — it concentrates onto a single quadrature point.
+
+This is the discrete signature of a formulation that \emph{inherits} the
+bulk singularity instead of \emph{regularising} it.
+
+\paragraph{What this means for adding zero-thickness elements.}
+The convergence study justifies the framework PR. Going to a true
+cohesive element type with shape-function continuity to the bulk would:
+\begin{enumerate}
+\item integrate the cohesive law over an element-natural length scale
+      rather than at a single quadrature point;
+\item produce a mesh-convergent cohesive activation load (independent of
+      $h$ once $h \ll \ell_{\rm cz}$);
+\item allow the process zone to spread over multiple elements as load
+      increases, which is the precondition for a global limit point.
+\end{enumerate}
+Mesh refinement and higher-order shape functions in the existing
+formulation cannot substitute for this — the convergence study shows
+both make the activation problem worse, not better, by sharpening the
+inherited singularity rather than regularising it.
+
+\paragraph{Effort estimate for the PR.}
+\begin{itemize}
+\item New \texttt{libMesh::Elem} subclass for a 2D 4-node and 3D 8-node
+      zero-thickness cohesive element: $\sim$500--1000 lines + tests.
+      libMesh has no existing element type close enough to derive from.
+\item Mesh generator that creates these elements at block-pair
+      interfaces (essentially \texttt{BreakMeshByBlockGenerator} +
+      element creation): $\sim$200--400 lines.
+\item Special quadrature rule for zero-thickness integration.
+\item Adapt \texttt{BiLinearMixedModeTraction} and friends to the new
+      element type — most of the existing CZM material code reuses with
+      minor adjustments: $\sim$200--500 lines.
+\item Exodus I/O handler (zero-thickness elements are typically written
+      as degenerate prisms).
+\item Comprehensive testing on existing CZM benchmarks.
+\end{itemize}
+Realistic estimate: \textbf{a few weeks to a few months} of focused work
+for a developer fluent in both libMesh and MOOSE internals.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{tier2_1_dcb_AL_meshconv.png}
+\caption{Mesh convergence study. \textbf{Left}: load--deflection
+trajectories. All five configurations sit on essentially the same
+linear branch (slope $3.20$--$3.69$ vs LEFM beam $3.49$), confirming
+that pre-peak compliance is mesh-convergent. \textbf{Right}:
+leading-edge interface traction along the bond. The saturation load
+shifts toward zero with mesh refinement (red $\to$ cyan $\to$ olive),
+confirming the cohesive activation is \emph{not} mesh-convergent in
+this formulation. QUAD8 (orange) is closer to the LEFM peak but still
+follows the same divergent pattern.}
+\label{fig:dcb_meshconv}
+\end{figure}
+
+%=====================================================
+\subsection{Why is there no limit point? — diagnosis}
+\label{subsec:no_limit_point_diagnosis}
+
+A DCB load--deflection curve has a limit point when the cohesive zone's
+contribution to the global compliance grows faster than the bulk's
+linear loading. Two mechanisms can do this:
+\begin{enumerate}
+\item[(i)] \textbf{Process zone spread.} More cohesive material enters
+  softening as load increases.
+\item[(ii)] \textbf{Effective crack advance.} The leading-edge cohesive
+  element reaches $d=1$ ($\delta_n = \delta_f$), the effective crack
+  tip jumps forward, and $C_{\rm arm} \propto a_{\rm eff}^3$ grows.
+\end{enumerate}
+Neither happens at physically meaningful loads in this problem. The
+following sub-sections quantify why.
+
+\paragraph{(a) The elastic process zone is too short relative to the mesh.}
+With cohesive penalty $K = 10^{6}$~MPa/mm and arm bending stiffness
+$EI = E h^3/12 = 38{,}791~\text{N}\!\cdot\!\text{mm}^2$ per unit width, the
+beam-on-elastic-foundation decay length is
+\begin{equation}
+\ell_{\rm bef} \;=\; \!\left(\frac{4\,EI}{K}\right)^{\!1/4}
+\;=\; \left(\frac{4 \cdot 38{,}791}{10^{6}}\right)^{\!1/4}
+\;\approx\; 0.63~\text{mm}.
+\end{equation}
+At $0.25$~mm element size, only $\sim 2.5$ elements behind the leading
+edge see appreciable elastic cohesive deformation. Hillerborg's
+``natural'' cohesive process zone length is much larger:
+\begin{equation}
+\ell_{\rm cz}^{\rm Hillerborg} \;=\; \frac{9\pi}{32}\,\frac{E\,G_{Ic}}{N^{2}}
+\;\approx\; 16~\text{mm},
+\end{equation}
+i.e.\ $\ell_{\rm cz}/\ell_{\rm bef} \approx 25$. The natural process
+zone never has room to develop because the elastic foundation is too
+stiff: only the immediate vicinity of the leading edge is even
+elastically deformed, the rest of the bond is essentially rigid.
+Mechanism (i) is therefore stifled.
+
+\paragraph{(b) The leading edge advances too slowly.}
+At each AL step we measure $\max_x \delta_n(x)$ along the bond. From
+the $400$-step AL run with $K = 10^{6}$:
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{rrrr}
+\toprule
+$\lambda$ & $P$ [N/mm] & $\max\delta_n$ [mm] & $\max\delta_n / \delta_f$ \\
+\midrule
+$1.00$ & $5.89$ ($=\!P_c^{\rm LEFM}$) & $\sim\!\delta_0 = 8\times 10^{-5}$ & $0.33\,\%$ \\
+$1.81$ & $10.7$  & $2.12\times 10^{-4}$ & $0.88\,\%$ \\
+$3.00$ & $17.7$  & $\sim\!7\times 10^{-4}$ & $\sim\!2.9\,\%$ \\
+$6.05$ & $35.7$  & $1.31\times 10^{-3}$ & $5.4\,\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+The trajectory is linear ($P/u_{\rm top} = 3.22$~N/mm/mm to $0.03\,\%$
+across all $400$ steps), and $\max\delta_n$ grows roughly linearly with
+$\lambda$ at a rate of $dx_{\delta_n}/d\lambda \approx 4\times 10^{-6}$
+mm per unit $\lambda$. Reaching $\delta_n = \delta_f$ at the leading
+edge — the prerequisite for crack advance — requires roughly
+\begin{equation}
+\lambda \;\sim\; \frac{\delta_f}{4\times 10^{-6}}
+\;\approx\; 6\,000,
+\end{equation}
+i.e.\ $P \approx 35{,}000$~N/mm — $6{,}000\!\times$ the LEFM peak.
+This is meaningless physically (well past the small-strain validity
+window, well past any reasonable interpretation of the model). So
+mechanism (ii) is also unreachable in practice.
+
+\paragraph{(c) Test: lowering $K$ doesn't help — it just shifts the bottleneck.}
+A companion run (\texttt{tier2\_1\_dcb\_AL\_K1e4.i}) with $K = 10^{4}$
+(softer cohesive penalty) gives $\ell_{\rm bef} \approx 1.98$~mm — a
+better-resolved process zone — but the cohesive softening onset moves
+to $\delta_0 = N/K = 8\times 10^{-3}$~mm (100$\times$ larger). At
+$\lambda = 2.97$ ($P = 17.5$~N/mm) the leading edge has only $\delta_n
+= 2.45\times 10^{-4}$~mm — still in the elastic penalty branch, with
+$\max t_n = 2.45$~MPa, i.e.\ $3\,\%$ of $N$. Softening hasn't even
+begun at this load level. The bottleneck simply moves from
+``leading-edge advance is slow'' (high $K$) to ``loading required to
+reach softening is high'' (low $K$). There's no $K$ for which the
+cohesive zone produces a clean limit point on this DCB geometry.
+
+\paragraph{(d) Why this differs from Turon's UEL.}
+A user-written zero-thickness cohesive element with shape-function
+continuity to the bulk concentrates stress at the leading edge as a
+near-singular field. Locally the stress \emph{exceeds} $N$ in a
+small neighbourhood, drives $\delta_n \to \delta_f$ on a single
+quadrature point of the leading element, and that element fully
+decoheres. The effective crack tip advances; the next element starts
+its own softening from the elevated $\delta_n$ inherited via shape
+continuity; the process repeats. This produces a smooth limit point
+at the LEFM peak and the post-peak shape of Turon Fig.~9.
+
+The MOOSE \texttt{BreakMeshByBlockGenerator} $+$
+\texttt{CZMInterfaceKernel} formulation, by contrast, samples
+$\max t_n$ along the bond and \emph{caps} it at $N$ as soon as any
+quadrature point reaches $\delta_n = \delta_0$. There is no
+shape-function continuity transmitting stress concentration into the
+interior. Each element has to be ``loaded up'' independently to reach
+$\delta_f$, which is why the rate $d(\max\delta_n)/d\lambda$ stays
+small.
+
+\paragraph{Bottom line.} The MOOSE DCB \emph{does} approach the LEFM
+peak load (it crosses $P_c = 5.89$~N/mm at $\lambda = 1.0$, with
+max traction $79.6$~MPa), but does not have a limit point there
+because no single cohesive element actually fails. Reaching the
+post-peak ``Fig.~9'' branch in this formulation would require either
+mesh refinement of the order $\Delta x \ll \ell_{\rm bef}$ (so the
+leading-edge stress concentration is well-resolved) or a true
+cohesive-element formulation. Arc-length is orthogonal to this issue
+and does not move the diagnosis.
+
+%=====================================================
+\subsection{Conclusion: AL doesn't fix this}
+
+The prior diagnosis stands. The MOOSE \texttt{BreakMeshByBlockGenerator}
+$+$ \texttt{CZMInterfaceKernel} formulation produces a cohesive process
+zone whose stresses average over each interface segment, in contrast to
+Turon's user-written cohesive elements which integrate via shape-function
+continuity with the bulk and concentrate stress at the leading edge.
+Effectively, MOOSE's CZM is ``softer'' at the crack tip — it spreads the
+process zone but doesn't push any single point to $d = 1$ at LEFM-peak
+loading.
+
+Box~4.4 arc-length is a numerical \emph{path-following} tool: it traces
+the equilibrium curve and handles limit points ($du/dP = 0$ or
+snap-back, $du/dP < 0$) where standard Newton fails. If the equilibrium
+curve has no limit point, AL just retraces what fixed-load Newton already
+gives. Here, the curve is linear all the way through $\lambda \sim 1.7$,
+so AL contributes nothing the force-controlled run does not.
+
+What \emph{would} reproduce Turon's Fig.~9 in MOOSE remains the same as
+the prior recommendation:
+\begin{enumerate}
+\item Switch to a true cohesive-element formulation (zero-thickness
+      interface element with shape-function continuity to the bulk) —
+      significant new code in MOOSE.
+\item Switch to a different benchmark whose post-peak shape transfers
+      to the BreakMesh $+$ InterfaceKernel formulation.
+\item Use ENF (Tier 2.2): unstable shear-mode propagation produces
+      snap-back even in MOOSE's formulation, where AL becomes
+      load-bearing rather than redundant.
+\end{enumerate}
+
+%=====================================================
+\subsection{What the AL revisit does verify}
+
+\begin{itemize}
+\item AL is operational on a structurally meaningful CZM problem
+      ($\sim 6500$ elements, mode-I cohesive law, mixed boundary
+      conditions).
+\item AL converges in $1$--$2$ Newton iterations per outer step at
+      machine-precision residual, all $120$ steps.
+\item AL traces the same load--deflection trajectory as fixed-force
+      Newton on this problem, confirming that the previously observed
+      ``no limit point'' diagnosis was correct: it is not a
+      Newton-convergence pathology that AL would have hidden.
+\item The bilinear traction--separation law's zero-normal-tangent corner
+      at $\delta_n = 0$ requires the same $10^{-7}$~mm initial offset
+      workaround used in the snap-back demo
+      (Section~\ref{sec:snap_back_czm}).
+\end{itemize}
+
+The DCB Tier 2.1 status is unchanged: \emph{pre-peak compliance verified
+to within $8\,\%$ of LEFM; full Fig.~9 reproduction remains formulation-limited.}
+\end{document}

@@ -1,0 +1,180 @@
+%=====================================================
+\section{Tier 1.1: Mathematical formulation}
+\label{sec:tier1_1}
+
+This section summarizes the governing equations corresponding to the input file
+\texttt{tier1\_1\_mode\_I\_monotonic.i} and the analytical reference implemented in
+\texttt{verify\_tier1\_1.py}.
+
+%=====================================================
+\subsection{Domain and discontinuity}
+
+We consider two stacked unit-square subdomains,
+\begin{equation}
+\Omega_1 = [0,1]\times[0,1],
+\qquad
+\Omega_2 = [0,1]\times[1,2],
+\end{equation}
+with the interface
+\begin{equation}
+\Gamma_c = \{(x,y): 0 \le x \le 1,\ y = 1\}.
+\end{equation}
+
+The mesh is split along $\Gamma_c$ using \texttt{BreakMeshByBlockGenerator},
+allowing for a displacement discontinuity. The jump is defined as
+\begin{equation}
+\jump{\bu} = \bu^{+} - \bu^{-} \quad \text{on } \Gamma_c.
+\end{equation}
+
+The unit normal vector is $\bn = (0,1)$, and the tangential direction is $\btan = (1,0)$.
+The normal and tangential components of the jump are
+\begin{equation}
+\delta_n = \jump{\bu} \cdot \bn = \jump{u_y},
+\qquad
+\delta_t = \jump{\bu} \cdot \btan = \jump{u_x}.
+\end{equation}
+
+%=====================================================
+\subsection{Bulk equations}
+
+In each subdomain $\Omega_i$, $i=1,2$, we solve the static equilibrium equations
+\begin{equation}
+\nabla \cdot \bsigma = \bm{0} \quad \text{in } \Omega_i,
+\end{equation}
+with isotropic linear elasticity
+\begin{equation}
+\bsigma = \mathbb{C} : \bm{\varepsilon},
+\qquad
+\bm{\varepsilon} = \frac{1}{2}(\nabla \bu + \nabla \bu^{\top}).
+\end{equation}
+
+The material parameters are chosen as
+\begin{equation}
+E = 10^{9}, \qquad \nu = 0.3,
+\end{equation}
+such that the bulk stiffness is significantly larger than the interface stiffness.
+
+%=====================================================
+\subsection{Interface kinematics and equilibrium}
+
+On $\Gamma_c$, the cohesive traction satisfies
+\begin{equation}
+\bsigma\,\bn = \btrac(\delta_n, \delta_t).
+\end{equation}
+
+Under mode-I loading, only the normal component is active,
+\begin{equation}
+t_n = \btrac \cdot \bn.
+\end{equation}
+
+%=====================================================
+\subsection{Bilinear traction--separation law}
+
+For monotonic mode-I loading, $\delta_t = 0$ and $\delta_n^{\max} = \delta_n$.
+The bilinear traction law reduces to
+\begin{equation}
+t_n(\delta_n) =
+\begin{cases}
+K\,\delta_n, & 0 \le \delta_n \le \delta_n^0, \\[6pt]
+(1-d)\,K\,\delta_n, & \delta_n^0 < \delta_n \le \delta_n^f, \\[6pt]
+0, & \delta_n > \delta_n^f.
+\end{cases}
+\end{equation}
+
+The damage variable is defined as
+\begin{equation}
+d =
+\frac{\delta_n^f \left(\delta_n^{\max} - \delta_n^0\right)}
+{\delta_n^{\max} \left(\delta_n^f - \delta_n^0\right)},
+\qquad d \in [0,1].
+\end{equation}
+
+For monotonic loading, the softening branch can be written as
+\begin{equation}
+t_n(\delta_n) =
+N \frac{\delta_n^f - \delta_n}{\delta_n^f - \delta_n^0},
+\qquad
+\delta_n^0 \le \delta_n \le \delta_n^f.
+\end{equation}
+
+The characteristic separations are
+\begin{equation}
+\delta_n^0 = \frac{N}{K},
+\qquad
+\delta_n^f = \frac{2 G_{Ic}}{N}.
+\end{equation}
+
+The fracture energy satisfies
+\begin{equation}
+G_{Ic} = \int_0^{\delta_n^f} t_n(\delta_n)\, d\delta_n
+= \frac{1}{2} N \delta_n^f.
+\end{equation}
+
+%=====================================================
+\subsection{Numerical parameters}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+Symbol & Meaning & Value \\
+\midrule
+$K$ & penalty stiffness & $5.0 \times 10^{3}$ \\
+$N$ & normal strength & $50$ \\
+$G_{Ic}$ & fracture energy & $0.5$ \\
+$\delta_n^0$ & onset of softening & $1.0 \times 10^{-2}$ \\
+$\delta_n^f$ & full decohesion & $2.0 \times 10^{-2}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The penalty stiffness $K$ is chosen so that $\delta_n^0 = 0.01$ coincides
+with the displacement at which the loading function $u_*(t)$ changes slope;
+the elastic and softening branches then occupy comparable extents along
+the $\delta_n$ axis.
+
+%=====================================================
+\subsection{Loading and boundary conditions}
+
+The bottom boundary ($y=0$) is fixed, while the top boundary ($y=2$) is
+displaced in the vertical direction according to
+\begin{equation}
+u_*(t) =
+\begin{cases}
+\dfrac{0.01}{0.1}\, t, & 0 \le t \le 0.1, \\[8pt]
+0.01
++ \dfrac{0.03 - 0.01}{0.9}\,(t - 0.1),
+& 0.1 < t \le 1.
+\end{cases}
+\end{equation}
+
+The final displacement $u_*(1) = 0.03 = 1.5\,\delta_n^f$ ensures complete decohesion.
+
+%=====================================================
+\subsection{Weak form}
+
+Find $\bu \in \mathcal{V}$ such that
+\begin{equation}
+\int_{\Omega_1 \cup \Omega_2}
+\bsigma(\bu) : \nabla \bv \, dV
++
+\int_{\Gamma_c}
+\btrac(\jump{\bu}) \cdot \jump{\bv} \, dS
+= 0
+\end{equation}
+for all admissible test functions $\bv$.
+
+%=====================================================
+\subsection{Verification criterion}
+
+Let $(\delta_n^{(k)}, t_n^{(k)})$ denote simulation results. The solution is accepted if
+\begin{equation}
+\max_k \left| t_n^{(k)} - t_n^{\text{ref}}(\delta_n^{(k)}) \right| < 10^{-7},
+\end{equation}
+and
+\begin{equation}
+\max_k |t_t^{(k)}| < 10^{-10}.
+\end{equation}
+
+\end{document}
