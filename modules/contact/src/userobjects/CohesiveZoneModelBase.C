@@ -85,7 +85,7 @@ CohesiveZoneModelBase::CohesiveZoneModelBase(const InputParameters & parameters)
   for (unsigned int i = 0; i < _ndisp; ++i)
   {
     _grad_disp.push_back(&adCoupledGradient("displacements", i));
-    _grad_disp_neighbor.push_back(&adCoupledGradient("displacements", i));
+    _grad_disp_neighbor.push_back(&adCoupledNeighborGradient("displacements", i));
   }
 
   // Set non-intervening components to zero

@@ -42,7 +42,7 @@ def main():
     #dg_al  = read(here / "tier2_1_dcb_dg_davila_AL_out.csv")
     #cg_al  = read(here / "tier2_1_dcb_cg_davila_AL_out.csv")
     #cg3d_al = read(here / "tier2_1_dcb_cg_davila_3d_AL_out.csv")
-    exp  = read(here / "dg_notes" / "dcb_exp.csv", header=False)
+    exp  = read(here /"dcb_exp.csv", header=False)
 
     cg2d_open = cg2d['opening']
     cg2d_P    = cg2d['P_top_N']
