@@ -57,6 +57,11 @@ EshelbyTensorTempl<is_ad>::EshelbyTensorTempl(const InputParameters & parameters
     _grad_disp(3),
     _grad_disp_old(3),
     _grad_disp_rate(getMaterialProperty<RankTwoTensor>(_base_name + "grad_disp_rate")),
+    _grad_enrich_disp_tensor(
+        getGenericOptionalMaterialProperty<RankTwoTensor, is_ad>(_base_name +
+                                                                 "grad_enrich_disp_tensor")),
+    _grad_enrich_disp_tensor_old(
+        getOptionalMaterialPropertyOld<RankTwoTensor>(_base_name + "grad_enrich_disp_tensor")),
     _J_thermal_term_vec(declareProperty<RealVectorValue>("J_thermal_term_vec")),
     _grad_temp(coupledGradient("temperature")),
     _has_temp(isCoupled("temperature")),
@@ -115,20 +120,18 @@ EshelbyTensorTempl<is_ad>::computeQpProperties()
       (*_grad_disp[0])[_qp], (*_grad_disp[1])[_qp], (*_grad_disp[2])[_qp]);
 
   RankTwoTensor H(F);
+  // if (_grad_enrich_disp_tensor)
+  //   H += MetaPhysicL::raw_value(_grad_enrich_disp_tensor[_qp]);
+  F = H;
   F.addIa(1.0);
   Real detF = F.det();
   RankTwoTensor FinvT(F.inverse().transpose());
 
   // 1st Piola-Kirchoff Stress (P):
-  //RankTwoTensor P = detF * MetaPhysicL::raw_value(_stress[_qp]) * FinvT;
-  RankTwoTensor P = MetaPhysicL::raw_value(_stress[_qp]);
-
-  // HTP = H^T * P = H^T * detF * sigma * FinvT;
+  RankTwoTensor P = detF * MetaPhysicL::raw_value(_stress[_qp]) * FinvT;
   RankTwoTensor HTP = H.transpose() * P;
-
   RankTwoTensor WI = RankTwoTensor(RankTwoTensor::initIdentity);
-  //WI *= (_sed[_qp] * detF);
-  WI *= (_sed[_qp]);
+  WI *= (_sed[_qp] * detF);
 
   _eshelby_tensor[_qp] = WI - HTP;
 
@@ -137,6 +140,8 @@ EshelbyTensorTempl<is_ad>::computeQpProperties()
   {
     auto H_old = RankTwoTensor::initializeFromRows(
         (*_grad_disp_old[0])[_qp], (*_grad_disp_old[1])[_qp], (*_grad_disp_old[2])[_qp]);
+    if (_grad_enrich_disp_tensor_old)
+      H_old += _grad_enrich_disp_tensor_old[_qp];
 
     RankTwoTensor Wdot = RankTwoTensor(RankTwoTensor::initIdentity);
     //Wdot *= ((*_serd)[_qp] * detF);

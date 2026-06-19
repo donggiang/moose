@@ -51,6 +51,8 @@ protected:
   std::vector<const VariableGradient *> _grad_disp;
   std::vector<const VariableGradient *> _grad_disp_old;
    const MaterialProperty<RankTwoTensor> & _grad_disp_rate;
+  const GenericOptionalMaterialProperty<RankTwoTensor, is_ad> & _grad_enrich_disp_tensor;
+  const OptionalMaterialProperty<RankTwoTensor> & _grad_enrich_disp_tensor_old;
   MaterialProperty<RealVectorValue> & _J_thermal_term_vec;
   const VariableGradient & _grad_temp;
   const bool _has_temp;

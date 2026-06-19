@@ -41,10 +41,6 @@ ComputeCrackTipEnrichmentIncrementalStrain::ComputeCrackTipEnrichmentIncremental
     _enrich_variable(4),
     _phi(_assembly.phi()),
     _grad_phi(_assembly.gradPhi()),
-    _grad_enrich_disp_tensor(
-        declareProperty<RankTwoTensor>(_base_name + "grad_enrich_disp_tensor")),
-    _grad_enrich_disp_tensor_old(
-        getMaterialPropertyOld<RankTwoTensor>(_base_name + "grad_enrich_disp_tensor")),
     _B(4),
     _dBX(4),
     _dBx(4)
