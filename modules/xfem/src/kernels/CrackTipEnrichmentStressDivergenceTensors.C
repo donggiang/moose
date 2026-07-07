@@ -32,6 +32,7 @@ CrackTipEnrichmentStressDivergenceTensorsTempl<is_ad>::validParams()
   params.addParam<std::string>("base_name", "Material property base name");
   params.addRequiredParam<UserObjectName>("crack_front_definition",
                                           "The CrackFrontDefinition user object name");
+  EnrichmentFunctionCalculation::addValidParams(params);
   params.set<bool>("use_displaced_mesh") = false;
   return params;
 }
@@ -41,7 +42,8 @@ CrackTipEnrichmentStressDivergenceTensorsTempl<
     is_ad>::CrackTipEnrichmentStressDivergenceTensorsTempl(const InputParameters & parameters)
   : CrackTipEnrichmentStressDivergenceTensorsParent<is_ad>(parameters),
     EnrichmentFunctionCalculation(
-        &this->template getUserObject<CrackFrontDefinition>("crack_front_definition")),
+        &this->template getUserObject<CrackFrontDefinition>("crack_front_definition"),
+        this->template getParam<Real>("creep_exponent")),
     _base_name(this->isParamValid("base_name")
                    ? this->template getParam<std::string>("base_name") + "_"
                    : ""),

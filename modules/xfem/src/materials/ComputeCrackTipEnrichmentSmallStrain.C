@@ -26,13 +26,15 @@ ComputeCrackTipEnrichmentSmallStrain::validParams()
                                                               "The enrichment displacement");
   params.addRequiredParam<UserObjectName>("crack_front_definition",
                                           "The CrackFrontDefinition user object name");
+  EnrichmentFunctionCalculation::addValidParams(params);
   return params;
 }
 
 ComputeCrackTipEnrichmentSmallStrain::ComputeCrackTipEnrichmentSmallStrain(
     const InputParameters & parameters)
   : ComputeStrainBase(parameters),
-    EnrichmentFunctionCalculation(&getUserObject<CrackFrontDefinition>("crack_front_definition")),
+    EnrichmentFunctionCalculation(&getUserObject<CrackFrontDefinition>("crack_front_definition"),
+                                  getParam<Real>("creep_exponent")),
     _enrich_disp(3),
     _grad_enrich_disp(3),
     _enrich_variable(4),

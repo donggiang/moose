@@ -29,6 +29,7 @@ ComputeCrackTipEnrichmentIncrementalStrainTempl<is_ad>::validParams()
 
   params.addRequiredParam<UserObjectName>("crack_front_definition",
                                           "The CrackFrontDefinition user object name");
+  EnrichmentFunctionCalculation::addValidParams(params);
 
   return params;
 }
@@ -38,7 +39,8 @@ ComputeCrackTipEnrichmentIncrementalStrainTempl<
     is_ad>::ComputeCrackTipEnrichmentIncrementalStrainTempl(const InputParameters & parameters)
   : ComputeIncrementalStrainBaseParent<is_ad>(parameters),
     EnrichmentFunctionCalculation(
-        &this->template getUserObject<CrackFrontDefinition>("crack_front_definition")),
+        &this->template getUserObject<CrackFrontDefinition>("crack_front_definition"),
+        this->template getParam<Real>("creep_exponent")),
     _enrich_disp(3),
     _grad_enrich_disp(3),
     _grad_enrich_disp_old(3),

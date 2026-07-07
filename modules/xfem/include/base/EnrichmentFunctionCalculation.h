@@ -17,7 +17,10 @@
 class EnrichmentFunctionCalculation
 {
 public:
-  EnrichmentFunctionCalculation(const CrackFrontDefinition * crack_front_definition);
+  static void addValidParams(InputParameters & params);
+
+  EnrichmentFunctionCalculation(const CrackFrontDefinition * crack_front_definition,
+                                const Real creep_exponent = 1.0);
 
   /** calculate the enrichment function values at point
    * @return the closest crack front index
@@ -41,6 +44,8 @@ public:
 
 private:
   const CrackFrontDefinition & _crack_front_definition;
+  const Real _creep_exponent;
+  const Real _lambda;
   Real _r;
   Real _theta;
 };

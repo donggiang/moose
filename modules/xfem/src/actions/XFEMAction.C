@@ -66,6 +66,12 @@ XFEMAction::validParams()
   params.addParam<bool>("use_crack_growth_increment", false, "Use fixed crack growth increment");
   params.addParam<Real>("crack_growth_increment", 0.1, "Crack growth increment");
   params.addParam<bool>("use_crack_tip_enrichment", false, "Use crack tip enrichment functions");
+  params.addRangeCheckedParam<Real>(
+      "creep_exponent",
+      1.0,
+      "creep_exponent > 0.0",
+      "Power-law creep exponent n used in crack-tip enrichment functions. The default n=1 "
+      "recovers elastic sqrt(r) enrichment.");
   params.addParam<bool>("use_AD", false, "Use AD");
   params.addParam<UserObjectName>("crack_front_definition",
                                   "The CrackFrontDefinition user object name (only "
@@ -101,6 +107,7 @@ XFEMAction::XFEMAction(const InputParameters & params)
     _xfem_crack_growth_increment(getParam<Real>("crack_growth_increment")),
     _use_crack_tip_enrichment(getParam<bool>("use_crack_tip_enrichment")),
     _use_AD(getParam<bool>("use_AD")),
+    _creep_exponent(getParam<Real>("creep_exponent")),
     _has_cut_off_radius(isParamValid("cut_off_radius")),
     _cut_off_radius(_has_cut_off_radius ? getParam<Real>("cut_off_radius") : 0.0),
     _blocks(getParam<std::vector<SubdomainName>>("block"))
@@ -189,6 +196,7 @@ XFEMAction::act()
       params.set<unsigned int>("component") = i / 4;
       params.set<unsigned int>("enrichment_component") = i % 4;
       params.set<UserObjectName>("crack_front_definition") = _crack_front_definition;
+      params.set<Real>("creep_exponent") = _creep_exponent;
       params.set<std::vector<VariableName>>("enrichment_displacements") = _enrich_displacements;
       params.set<std::vector<VariableName>>("displacements") = _displacements;
       if (!_blocks.empty())
