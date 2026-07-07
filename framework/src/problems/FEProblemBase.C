@@ -8712,7 +8712,10 @@ FEProblemBase::zeroEnrichmentOnBoundary(const BoundaryName & bname)
 
   sys.update();
 
-  _console << "Zeroed " << n_zeroed << " enrichment DOFs on boundary '" << bname
+  auto n_zeroed_global = n_zeroed;
+  _communicator.sum(n_zeroed_global);
+
+  _console << "Zeroed " << n_zeroed_global << " enrichment DOFs on boundary '" << bname
            << "' (current/old/older)\n";
 }
 
@@ -8757,7 +8760,7 @@ FEProblemBase::updateMeshXFEM()
   if (haveXFEM())
     _xfem->executeSubdomainModifiers();
   // After the interface sideset is rebuilt, enforce zero enrichment there.
-  if (updated)
+  if (updated || crack_front_advanced)
     zeroEnrichmentOnBoundary("enriched_interface");
 
   return (updated || crack_front_advanced);
