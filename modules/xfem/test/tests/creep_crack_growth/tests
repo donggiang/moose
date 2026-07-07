@@ -1,0 +1,32 @@
+[Tests]
+  issues = '#xfem_ct'
+  design = 'ComputeCrackTipEnrichmentIncrementalStrain.md XFEM/index.md'
+
+  requirement = 'The XFEM module shall run an AD creep crack-growth compact-tension model with '
+                'crack-tip enrichment and a crack-tip subdomain modifier.'
+
+  [ct_ad]
+    [exodiff]
+      type = Exodiff
+      input = 'ct_AD.i'
+      exodiff = 'ct_h2_c1em10_e9_dt8_m0p045_n0p1.e-s004'
+      map = false
+      capabilities = 'unique_id & superlu'
+      expect_out = 'CrackFrontDefinition: Automatically detected 1 crack front points from mesh-based provider'
+
+      detail = 'where the final Exodus output matches the reference, and'
+    []
+
+    [csvdiff]
+      type = CSVDiff
+      input = 'ct_AD.i'
+      csvdiff = 'ct_h2_c1em10_e9_dt8_m0p045_n0p1.csv'
+      capabilities = 'unique_id & superlu'
+      prereq = 'ct_ad/exodiff'
+      delete_output_before_running = false
+      should_execute = false
+
+      detail = 'where the creep crack-growth integral values match the CSV reference.'
+    []
+  []
+[]
