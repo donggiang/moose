@@ -106,6 +106,14 @@ setLinearSolverDefaults(FEProblemBase & problem, libMesh::LinearSolver<T> & line
  */
 void petscSetDefaults(FEProblemBase & problem);
 
+/**
+ * Restores MOOSE's nonlinear convergence callback after SNES options have been applied.
+ *
+ * SNESSetFromOptions may change the SNES type, which resets the convergence callback for
+ * variational-inequality solvers such as vinewtonrsls.
+ */
+void petscSetNonlinearConvergenceTest(FEProblemBase & problem);
+
 PetscErrorCode petscSetupOutput(CommandLine * cmd_line);
 
 /**

@@ -595,6 +595,27 @@ petscSetKSPDefaults(FEProblemBase & problem, KSP ksp)
 }
 
 void
+petscSetNonlinearConvergenceTest(FEProblemBase & problem)
+{
+  for (const auto nl_index : make_range(problem.numNonlinearSystems()))
+  {
+    NonlinearSystemBase & nl = problem.getNonlinearSystemBase(nl_index);
+    auto * const petsc_solver = cast_ptr<PetscNonlinearSolver<Number> *>(nl.nonlinearSolver());
+    const char * snes_prefix = nullptr;
+    std::string snes_prefix_str;
+    if (nl.system().prefix_with_name())
+    {
+      snes_prefix_str = nl.system().prefix();
+      snes_prefix = snes_prefix_str.c_str();
+    }
+    SNES snes = petsc_solver->snes(snes_prefix);
+    LibmeshPetscCallA(
+        nl.comm().get(),
+        SNESSetConvergenceTest(snes, petscNonlinearConverged, &problem, LIBMESH_PETSC_NULLPTR));
+  }
+}
+
+void
 petscSetDefaults(FEProblemBase & problem)
 {
   // Apply matrix-type options once the per-system matrix prefixes are known. This is different
@@ -625,12 +646,11 @@ petscSetDefaults(FEProblemBase & problem)
     LibmeshPetscCallA(nl.comm().get(), SNESGetKSP(snes, &ksp));
     LibmeshPetscCallA(nl.comm().get(), SNESSetMaxLinearSolveFailures(snes, 1000000));
     LibmeshPetscCallA(nl.comm().get(), SNESSetCheckJacobianDomainError(snes, PETSC_TRUE));
-    LibmeshPetscCallA(
-        nl.comm().get(),
-        SNESSetConvergenceTest(snes, petscNonlinearConverged, &problem, LIBMESH_PETSC_NULLPTR));
 
     petscSetKSPDefaults(problem, ksp);
   }
+
+  petscSetNonlinearConvergenceTest(problem);
 
   for (auto sys_index : make_range(problem.numLinearSystems()))
   {

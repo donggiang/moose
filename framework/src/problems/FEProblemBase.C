@@ -6932,6 +6932,12 @@ FEProblemBase::solve(const unsigned int nl_sys_num)
   // Do not worry, DM setup is very cheap
   _current_nl_sys->setupDM();
 
+  // Applying -snes_type may replace the convergence callback (notably for the PETSc
+  // variational-inequality solvers). Apply the options before restoring MOOSE's callback so
+  // user-supplied Convergence objects remain active for bounded solves.
+  LibmeshPetscCall(SNESSetFromOptions(_current_nl_sys->getSNES()));
+  Moose::PetscSupport::petscSetNonlinearConvergenceTest(*this);
+
   possiblyRebuildGeomSearchPatches();
 
   // reset flag so that residual evaluation does not get skipped
