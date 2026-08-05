@@ -22,6 +22,16 @@
     requirement = 'Stress matches exact analytic solution using Neo-Hookean material model'
     design = 'source/materials/lagrangian/ComputeNeoHookeanStress.md'
   []
+  [local_ad_neohookean]
+    type = CSVDiff
+    input = neohookean.i
+    cli_args = 'Materials/compute_stress/type=ComputeLagrangianADNeoHookeanStress'
+    csvdiff = 'neohookean_out.csv'
+    abs_zero = 1e-9
+    requirement = 'The locally differentiated Neo-Hookean material shall reproduce the '
+                  'analytic Neo-Hookean stress solution using a non-AD kernel.'
+    design = 'source/materials/lagrangian/ComputeLagrangianADNeoHookeanStress.md'
+  []
   [stvenantkirchhoff_small_deformation]
     type = CSVDiff
     issues = '#22588'
