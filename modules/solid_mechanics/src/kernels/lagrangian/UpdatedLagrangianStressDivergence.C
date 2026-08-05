@@ -17,6 +17,8 @@ UpdatedLagrangianStressDivergenceBase<G>::UpdatedLagrangianStressDivergenceBase(
   : LagrangianStressDivergenceBase(parameters),
     _stress(getMaterialPropertyByName<RankTwoTensor>(_base_name + "cauchy_stress")),
     _material_jacobian(getMaterialPropertyByName<RankFourTensor>(_base_name + "cauchy_jacobian")),
+    _dpk1_d_grad_u(
+        getMaterialPropertyByName<RankFourTensor>(_base_name + "dpk1_d_grad_u")),
 
     // Assembly quantities in the reference frame for stabilization
     _assembly_undisplaced(_fe_problem.assembly(_tid, this->_sys.number())),
@@ -129,6 +131,20 @@ UpdatedLagrangianStressDivergenceBase<G>::computeQpJacobianDisplacement(unsigned
     const RankTwoTensor delta_grad_u_avg =
         _large_kinematics ? _avg_grad_trial[beta][_j] * _F_avg[_qp] : _avg_grad_trial[beta][_j];
     delta_F_avg = _d_F_d_grad_u[_qp] * delta_grad_u_avg;
+
+    if (_d_F_d_grad_u[_qp](0, 0, 0, 0) == 1.0)
+    {
+      // Assemble the full-update UL tangent from the equivalent reference-frame PK1 derivative.
+      // This keeps the actual deformation gradient in the stress-measure wrap while F-bar
+      // modifies only the constitutive response, and therefore matches the TL linearization.
+      // Generalized midpoint updates retain the spatial tangent below.
+      const RankTwoTensor grad_test_reference =
+          _large_kinematics ? grad_test * _F_actual[_qp] : grad_test;
+      RankTwoTensor delta_pk1 = _dpk1_d_grad_u[_qp] * delta_grad_u_local;
+      delta_pk1 += deltaPK1NonLocalFBar(delta_F_avg);
+      return grad_test_reference.doubleContraction(delta_pk1) /
+             (_large_kinematics ? _F_actual[_qp].det() : 1.0);
+    }
   }
 
   // Stabilized delta(F_stab) through the F-bar tangent. With F-bar off, the partials are

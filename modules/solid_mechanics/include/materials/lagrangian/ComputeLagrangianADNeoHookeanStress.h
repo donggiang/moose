@@ -18,6 +18,8 @@ public:
   ComputeLagrangianADNeoHookeanStress(const InputParameters & parameters);
 
 protected:
+  void initialSetup() override;
+  void computeQpProperties() override;
   void computeQpPK1Stress() override;
 
   const unsigned int _ndisp;

@@ -63,6 +63,20 @@
       cli_args = "GlobalParams/large_kinematics=true GlobalParams/stabilize_strain=true"
       detail = 'for large displacements, with stabilization, and Dirichlet BCs'
     []
+    [dirichlet_large_local_ad_fbar]
+      type = PetscJacobianTester
+      input = 'dirichlet.i'
+      ratio_tol = 1E-7
+      difference_tol = 1E10
+      cli_args = "Materials/compute_stress/type=ComputeLagrangianADNeoHookeanStress "
+                 "Materials/lame/type=GenericConstantMaterial "
+                 "Materials/lame/prop_names='lambda mu' "
+                 "Materials/lame/prop_values='57692.3076923077 38461.5384615385'"
+      design = 'source/materials/lagrangian/ComputeLagrangianADNeoHookeanStress.md '
+               'source/kernels/lagrangian/UpdatedLagrangianStressDivergence.md'
+      requirement = 'The updated Lagrangian F-bar formulation shall use the energy-derived PK1 '
+                    'stress and tangent with a relative Jacobian error less than 1e-7.'
+    []
     [neumann_large_right]
       type = PetscJacobianTester
       input = 'neumann.i'

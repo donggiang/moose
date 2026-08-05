@@ -49,11 +49,34 @@ ComputeLagrangianADNeoHookeanStress::ComputeLagrangianADNeoHookeanStress(
     _lambda(getMaterialProperty<Real>(getParam<MaterialPropertyName>("lambda"))),
     _mu(getMaterialProperty<Real>(getParam<MaterialPropertyName>("mu")))
 {
-  if (!_large_kinematics)
-    paramError("large_kinematics", "This material requires large kinematics to be enabled.");
   if (_ndisp != _mesh.dimension())
     paramError("displacements",
                "The number of displacement variables must match the mesh dimension.");
+}
+
+void
+ComputeLagrangianADNeoHookeanStress::initialSetup()
+{
+  ComputeLagrangianStressPK1::initialSetup();
+  if (!_large_kinematics)
+    paramError("large_kinematics", "This material requires large kinematics to be enabled.");
+}
+
+void
+ComputeLagrangianADNeoHookeanStress::computeQpProperties()
+{
+  ComputeLagrangianStressPK1::computeQpProperties();
+
+  const bool need_jacobian = _fe_problem.currentlyComputingJacobian() ||
+                             _fe_problem.currentlyComputingResidualAndJacobian();
+  if (!need_jacobian)
+    return;
+
+  if (isPropertyActive(_d_nl_fbar.id()))
+    _d_nl_fbar[_qp] =
+        (_pk1_jacobian_bypass_fbar[_qp] * _d_F_stab_d_F_avg[_qp])
+            .singleProductJ(_F_ust[_qp]) /
+        _F_ust[_qp].det();
 }
 
 void

@@ -57,6 +57,9 @@ protected:
   // gradient
   const MaterialProperty<RankFourTensor> & _material_jacobian;
 
+  /// The first Piola-Kirchhoff stress derivative with respect to the displacement gradient
+  const MaterialProperty<RankFourTensor> & _dpk1_d_grad_u;
+
   // @{
   // The assembly quantities in the reference frame for stabilization
   Assembly & _assembly_undisplaced;

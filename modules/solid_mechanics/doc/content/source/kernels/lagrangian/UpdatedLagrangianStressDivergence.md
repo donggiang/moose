@@ -122,6 +122,11 @@ and $\bar{F}$ the average deformation gradient, defined in the [stabilization sy
 Note this is a somewhat unusual integral for an updated Lagrangian model, but it follows to keep the
 derivative term consistent with the $\bar{\boldsymbol{F}}$ modification to the strains.
 The `stabilize_strain` flag controls if the kernel modifies the Jacobian to account for the stabilized strains.
+For a full update ($dF/d\nabla u=\mathcal{I}$), the stabilized Jacobian is assembled from the
+equivalent reference-frame derivative of the first Piola-Kirchhoff stress. The local and
+element-average contributions from $\bar{F}$ are included separately, and the result is transformed
+to the current integration volume. This form gives the same Newton linearization as the total
+Lagrangian kernel. Generalized midpoint updates retain the spatial-tangent form above.
 
 ## `use_displaced_mesh`
 
