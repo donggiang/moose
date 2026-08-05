@@ -25,10 +25,10 @@ using LocalHessianADReal = DualNumber<LocalADReal, LocalHessianDerivative, true>
 InputParameters
 ComputeLagrangianADNeoHookeanStress::validParams()
 {
-  InputParameters params = ComputeLagrangianStressPK2::validParams();
+  InputParameters params = ComputeLagrangianStressPK1::validParams();
   params.addClassDescription(
-      "Compute a compressible Neo-Hookean stress and material tangent by locally differentiating "
-      "the strain-energy potential.");
+      "Compute a compressible Neo-Hookean PK1 stress and tangent by locally differentiating the "
+      "strain-energy potential with respect to the deformation gradient.");
   params.addParam<MaterialPropertyName>(
       "lambda", "lambda", "First Lame parameter material property.");
   params.addParam<MaterialPropertyName>("mu", "mu", "Shear modulus material property.");
@@ -37,7 +37,7 @@ ComputeLagrangianADNeoHookeanStress::validParams()
 
 ComputeLagrangianADNeoHookeanStress::ComputeLagrangianADNeoHookeanStress(
     const InputParameters & parameters)
-  : ComputeLagrangianStressPK2(parameters),
+  : ComputeLagrangianStressPK1(parameters),
     _lambda(getMaterialProperty<Real>(getParam<MaterialPropertyName>("lambda"))),
     _mu(getMaterialProperty<Real>(getParam<MaterialPropertyName>("mu")))
 {
@@ -46,20 +46,20 @@ ComputeLagrangianADNeoHookeanStress::ComputeLagrangianADNeoHookeanStress(
 }
 
 void
-ComputeLagrangianADNeoHookeanStress::computeQpPK2Stress()
+ComputeLagrangianADNeoHookeanStress::computeQpPK1Stress()
 {
   // Seed both AD levels so one energy evaluation provides its gradient and Hessian with respect
-  // to the nine Green-Lagrange strain components.
-  std::array<LocalHessianADReal, RankTwoTensor::N2> E;
+  // to the nine deformation-gradient components.
+  std::array<LocalHessianADReal, RankTwoTensor::N2> F;
   for (const auto i : make_range(RankTwoTensor::N))
     for (const auto j : make_range(RankTwoTensor::N))
     {
       const auto component = i * RankTwoTensor::N + j;
-      LocalHessianADReal Eij(0.0);
-      Eij.value().value() = _E[_qp](i, j);
-      Eij.value().derivatives()[component] = 1.0;
-      Eij.derivatives()[component].value() = 1.0;
-      E[component] = Eij;
+      LocalHessianADReal Fij(0.0);
+      Fij.value().value() = _F[_qp](i, j);
+      Fij.value().derivatives()[component] = 1.0;
+      Fij.derivatives()[component].value() = 1.0;
+      F[component] = Fij;
     }
 
   std::array<LocalHessianADReal, RankTwoTensor::N2> C;
@@ -67,13 +67,15 @@ ComputeLagrangianADNeoHookeanStress::computeQpPK2Stress()
     for (const auto j : make_range(RankTwoTensor::N))
     {
       const auto component = i * RankTwoTensor::N + j;
-      C[component] = 2.0 * E[component] + (i == j ? 1.0 : 0.0);
+      C[component] = 0.0;
+      for (const auto k : make_range(RankTwoTensor::N))
+        C[component] += F[k * RankTwoTensor::N + i] * F[k * RankTwoTensor::N + j];
     }
 
-  const auto det_C = C[0] * (C[4] * C[8] - C[5] * C[7]) -
-                     C[1] * (C[3] * C[8] - C[5] * C[6]) +
-                     C[2] * (C[3] * C[7] - C[4] * C[6]);
-  const auto log_J = 0.5 * log(det_C);
+  const auto J = F[0] * (F[4] * F[8] - F[5] * F[7]) -
+                 F[1] * (F[3] * F[8] - F[5] * F[6]) +
+                 F[2] * (F[3] * F[7] - F[4] * F[6]);
+  const auto log_J = log(J);
   const auto trace_C = C[0] + C[4] + C[8];
   const auto energy = 0.5 * _lambda[_qp] * log_J * log_J - _mu[_qp] * log_J +
                       0.5 * _mu[_qp] * (trace_C - 3.0);
@@ -82,10 +84,10 @@ ComputeLagrangianADNeoHookeanStress::computeQpPK2Stress()
     for (const auto j : make_range(RankTwoTensor::N))
     {
       const auto stress_component = i * RankTwoTensor::N + j;
-      _S[_qp](i, j) = energy.derivatives()[stress_component].value();
+      _pk1_stress[_qp](i, j) = energy.derivatives()[stress_component].value();
       for (const auto k : make_range(RankTwoTensor::N))
         for (const auto l : make_range(RankTwoTensor::N))
-          _C[_qp](i, j, k, l) =
+          _pk1_jacobian[_qp](i, j, k, l) =
               energy.derivatives()[stress_component].derivatives()[k * RankTwoTensor::N + l];
     }
 }

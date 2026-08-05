@@ -8,17 +8,17 @@
 
 #pragma once
 
-#include "ComputeLagrangianStressPK2.h"
+#include "ComputeLagrangianStressPK1.h"
 
-/// Compressible Neo-Hookean hyperelasticity differentiated from a local strain-energy potential
-class ComputeLagrangianADNeoHookeanStress : public ComputeLagrangianStressPK2
+/// Compressible Neo-Hookean PK1 stress and tangent differentiated from a local energy potential
+class ComputeLagrangianADNeoHookeanStress : public ComputeLagrangianStressPK1
 {
 public:
   static InputParameters validParams();
   ComputeLagrangianADNeoHookeanStress(const InputParameters & parameters);
 
 protected:
-  void computeQpPK2Stress() override;
+  void computeQpPK1Stress() override;
 
   const MaterialProperty<Real> & _lambda;
   const MaterialProperty<Real> & _mu;

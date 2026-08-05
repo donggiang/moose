@@ -52,8 +52,9 @@
     ratio_tol = 1E-6
     difference_tol = 1E10
     design = 'source/materials/lagrangian/ComputeLagrangianADNeoHookeanStress.md'
-    requirement = 'The energy-differentiated Neo-Hookean material shall provide a Jacobian '
-                  'with relative error less than 1e-6 to the non-AD total Lagrangian kernel.'
+    requirement = 'The energy- and kinematics-differentiated Neo-Hookean material shall provide '
+                  'a Jacobian with relative error less than 1e-6 to the non-AD total Lagrangian '
+                  'kernel.'
   []
   [neohookean_small]
     type = PetscJacobianTester
