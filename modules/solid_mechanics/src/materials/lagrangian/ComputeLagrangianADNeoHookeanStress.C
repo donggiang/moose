@@ -28,7 +28,8 @@ ComputeLagrangianADNeoHookeanStress::validParams()
   InputParameters params = ComputeLagrangianStressPK1::validParams();
   params.addClassDescription(
       "Compute a compressible Neo-Hookean PK1 stress and tangent by locally differentiating the "
-      "strain-energy potential with respect to the deformation gradient.");
+      "strain-energy potential with respect to the displacement gradient.");
+  params.addRequiredCoupledVar("displacements", "Displacement variables for the problem.");
   params.addParam<MaterialPropertyName>(
       "lambda", "lambda", "First Lame parameter material property.");
   params.addParam<MaterialPropertyName>("mu", "mu", "Shear modulus material property.");
@@ -38,28 +39,33 @@ ComputeLagrangianADNeoHookeanStress::validParams()
 ComputeLagrangianADNeoHookeanStress::ComputeLagrangianADNeoHookeanStress(
     const InputParameters & parameters)
   : ComputeLagrangianStressPK1(parameters),
+    _ndisp(coupledComponents("displacements")),
+    _grad_disp(coupledGradients("displacements")),
     _lambda(getMaterialProperty<Real>(getParam<MaterialPropertyName>("lambda"))),
     _mu(getMaterialProperty<Real>(getParam<MaterialPropertyName>("mu")))
 {
   if (!_large_kinematics)
     paramError("large_kinematics", "This material requires large kinematics to be enabled.");
+  if (_ndisp != _mesh.dimension())
+    paramError("displacements",
+               "The number of displacement variables must match the mesh dimension.");
 }
 
 void
 ComputeLagrangianADNeoHookeanStress::computeQpPK1Stress()
 {
-  // Seed both AD levels so one energy evaluation provides its gradient and Hessian with respect
-  // to the nine deformation-gradient components.
+  // Seed the displacement gradient, then retain its derivatives while constructing F. The
+  // non-AD kernel supplies the remaining nodal chain rule through the trial-function gradient.
   std::array<LocalHessianADReal, RankTwoTensor::N2> F;
   for (const auto i : make_range(RankTwoTensor::N))
     for (const auto j : make_range(RankTwoTensor::N))
     {
       const auto component = i * RankTwoTensor::N + j;
-      LocalHessianADReal Fij(0.0);
-      Fij.value().value() = _F[_qp](i, j);
-      Fij.value().derivatives()[component] = 1.0;
-      Fij.derivatives()[component].value() = 1.0;
-      F[component] = Fij;
+      LocalHessianADReal grad_u_ij(0.0);
+      grad_u_ij.value().value() = i < _ndisp ? (*_grad_disp[i])[_qp](j) : 0.0;
+      grad_u_ij.value().derivatives()[component] = 1.0;
+      grad_u_ij.derivatives()[component].value() = 1.0;
+      F[component] = grad_u_ij + (i == j ? 1.0 : 0.0);
     }
 
   std::array<LocalHessianADReal, RankTwoTensor::N2> C;
@@ -72,13 +78,12 @@ ComputeLagrangianADNeoHookeanStress::computeQpPK1Stress()
         C[component] += F[k * RankTwoTensor::N + i] * F[k * RankTwoTensor::N + j];
     }
 
-  const auto J = F[0] * (F[4] * F[8] - F[5] * F[7]) -
-                 F[1] * (F[3] * F[8] - F[5] * F[6]) +
+  const auto J = F[0] * (F[4] * F[8] - F[5] * F[7]) - F[1] * (F[3] * F[8] - F[5] * F[6]) +
                  F[2] * (F[3] * F[7] - F[4] * F[6]);
   const auto log_J = log(J);
   const auto trace_C = C[0] + C[4] + C[8];
-  const auto energy = 0.5 * _lambda[_qp] * log_J * log_J - _mu[_qp] * log_J +
-                      0.5 * _mu[_qp] * (trace_C - 3.0);
+  const auto energy =
+      0.5 * _lambda[_qp] * log_J * log_J - _mu[_qp] * log_J + 0.5 * _mu[_qp] * (trace_C - 3.0);
 
   for (const auto i : make_range(RankTwoTensor::N))
     for (const auto j : make_range(RankTwoTensor::N))

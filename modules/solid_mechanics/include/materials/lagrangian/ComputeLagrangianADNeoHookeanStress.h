@@ -20,6 +20,8 @@ public:
 protected:
   void computeQpPK1Stress() override;
 
+  const unsigned int _ndisp;
+  const std::vector<const VariableGradient *> _grad_disp;
   const MaterialProperty<Real> & _lambda;
   const MaterialProperty<Real> & _mu;
 };
