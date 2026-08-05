@@ -10,4 +10,32 @@
     abs_zero = 1e-6
     capabilities = 'method!=dbg'
   []
+  [local_ad_mms]
+    requirement = 'The local-AD Neo-Hookean material shall reproduce a manufactured finite-strain '
+                  'axisymmetric solution, including the radial, axial, and hoop deformation '
+                  'gradient terms, with second-order displacement convergence using non-AD total '
+                  'Lagrangian kernels'
+    design = 'source/materials/lagrangian/ComputeLagrangianADNeoHookeanStress.md'
+    [coarse]
+      type = CSVDiff
+      input = local_ad_mms.i
+      cli_args = 'Mesh/mesh/nx=4 Mesh/mesh/ny=4 Outputs/file_base=local_ad_mms_4_out'
+      csvdiff = local_ad_mms_4_out.csv
+      detail = 'on the coarse mesh.'
+    []
+    [medium]
+      type = CSVDiff
+      input = local_ad_mms.i
+      cli_args = 'Outputs/file_base=local_ad_mms_8_out'
+      csvdiff = local_ad_mms_8_out.csv
+      detail = 'on the medium mesh.'
+    []
+    [fine]
+      type = CSVDiff
+      input = local_ad_mms.i
+      cli_args = 'Mesh/mesh/nx=16 Mesh/mesh/ny=16 Outputs/file_base=local_ad_mms_16_out'
+      csvdiff = local_ad_mms_16_out.csv
+      detail = 'on the fine mesh.'
+    []
+  []
 []
