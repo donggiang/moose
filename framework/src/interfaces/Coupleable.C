@@ -90,13 +90,7 @@ Coupleable::Coupleable(const MooseObject * moose_object, bool nodal, bool is_fv)
           else if (auto * tmp_var = dynamic_cast<ArrayMooseVariable *>(moose_var))
             _coupled_array_moose_vars.push_back(tmp_var);
           else if (auto * tmp_var = dynamic_cast<MooseVariableFV<Real> *>(moose_var))
-          {
-            // We are using a finite volume variable through add*CoupledVar as opposed to getFunctor
-            // so we can be reasonably confident that the variable values will be obtained using
-            // traditional pre-evaluation and quadrature point indexing
-            tmp_var->requireQpComputations();
             _coupled_fv_moose_vars.push_back(tmp_var);
-          }
           else if (auto * tmp_var = dynamic_cast<MooseLinearVariableFV<Real> *>(moose_var))
             _coupled_fv_moose_vars.push_back(tmp_var);
           else
@@ -166,7 +160,7 @@ Coupleable::isCoupled(const std::string & var_name_in, unsigned int i) const
   else
   {
     // Make sure the user originally requested this value in the InputParameter syntax
-    if (!_c_parameters.hasCoupledValue(var_name))
+    if (!_c_parameters.hasCoupledVar(var_name))
       mooseError(_c_name,
                  ": The coupled variable \"",
                  var_name,

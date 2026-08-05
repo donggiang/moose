@@ -101,6 +101,14 @@ public:
     return _gij_map[axial_index][gap_index];
   }
 
+  /**
+   * Set the gap width for a given axial cell and gap index
+   */
+  void setGapWidth(unsigned int axial_index, unsigned int gap_index, Real gap_width)
+  {
+    _gij_map[axial_index][gap_index] = gap_width;
+  }
+
 protected:
   /// number of subchannels in the x direction
   unsigned int _nx;
@@ -159,7 +167,5 @@ public:
   static void generatePinCenters(
       unsigned int nx, unsigned int ny, Real pitch, Real elev, std::vector<Point> & pin_centers);
 
-  friend class SCMQuadSubChannelMeshGenerator;
-  friend class SCMQuadPinMeshGenerator;
-  friend class QuadSubChannel1PhaseProblem;
+  friend class SCMQuadAssemblyMeshGenerator;
 };

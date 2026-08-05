@@ -73,6 +73,43 @@ ProblemOperatorBase::SetTrialVariablesFromTrueVectors()
     trial_var->SetFromTrueVector();
   }
 }
+
+void
+ProblemOperatorBase::SolveWithOperator(mfem::Operator & system_operator,
+                                       mfem::Operator & linear_operator,
+                                       const mfem::Vector & rhs,
+                                       mfem::Vector & x)
+{
+  // Nonlinear solver path for both linear and nonlinear problems. (as a linear problem may still
+  // intentionally be solved through the nonlinear solver machinery when one is provided)
+  if (_problem_data.nonlinear_solver)
+  {
+    auto & nonlinear_solver = *_problem_data.nonlinear_solver;
+    if (nonlinear_solver.RequiresExternalLinearSolver())
+    {
+      if (!_problem_data.jacobian_solver)
+        mooseError("The configured MFEM nonlinear solver requires an external linear solver, but "
+                   "none was provided.");
+      auto & linear_solver = *_problem_data.jacobian_solver;
+      linear_solver.SetOperator(linear_operator);
+      nonlinear_solver.SetLinearSolver(linear_solver.GetSolver());
+    }
+
+    nonlinear_solver.SetOperator(system_operator);
+    nonlinear_solver.Mult(rhs, x);
+  }
+  // Linear solver path for linear problems.
+  else
+  {
+    if (!_problem_data.jacobian_solver)
+      mooseError("A linear MFEM solve requires a linear solver, but none was provided.");
+
+    auto & linear_solver = *_problem_data.jacobian_solver;
+    linear_solver.SetOperator(linear_operator);
+    linear_solver.Mult(rhs, x);
+  }
 }
+
+} // namespace Moose::MFEM
 
 #endif

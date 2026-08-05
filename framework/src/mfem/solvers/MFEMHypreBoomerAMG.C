@@ -18,7 +18,7 @@ registerMooseObject("MooseApp", MFEMHypreBoomerAMG);
 InputParameters
 MFEMHypreBoomerAMG::validParams()
 {
-  InputParameters params = MFEMSolverBase::validParams();
+  InputParameters params = Moose::MFEM::LORLinearSolverBase<mfem::HypreBoomerAMG>::validParams();
   params.addClassDescription("Hypre BoomerAMG solver and preconditioner for the iterative solution "
                              "of MFEM equation systems.");
   params.addParam<mfem::real_t>("l_tol", 1e-5, "Set the relative tolerance.");
@@ -34,7 +34,7 @@ MFEMHypreBoomerAMG::validParams()
 }
 
 MFEMHypreBoomerAMG::MFEMHypreBoomerAMG(const InputParameters & parameters)
-  : MFEMSolverBase(parameters),
+  : Moose::MFEM::LORLinearSolverBase<mfem::HypreBoomerAMG>(parameters),
     _mfem_fespace(
         isParamSetByUser("fespace")
             ? getMFEMProblem()
@@ -42,46 +42,31 @@ MFEMHypreBoomerAMG::MFEMHypreBoomerAMG(const InputParameters & parameters)
                   .getFESpace()
             : nullptr)
 {
-  constructSolver();
+  ConstructSolver();
 }
 
 MFEMHypreBoomerAMG::~MFEMHypreBoomerAMG() { _solver.reset(); }
 
 void
-MFEMHypreBoomerAMG::constructSolver()
+MFEMHypreBoomerAMG::ConstructSolver()
 {
   auto solver = std::make_unique<mfem::HypreBoomerAMG>();
-
-  solver->SetTol(getParam<mfem::real_t>("l_tol"));
-  solver->SetMaxIter(getParam<int>("l_max_its"));
-  solver->SetPrintLevel(getParam<int>("print_level"));
-  solver->SetStrengthThresh(getParam<mfem::real_t>("strength_threshold"));
-  solver->SetErrorMode(mfem::HypreSolver::ErrorMode(int(getParam<MooseEnum>("error_mode"))));
-
-  if (_mfem_fespace && !mfem::HypreUsingGPU())
-    solver->SetElasticityOptions(_mfem_fespace.get());
-
+  SetSolverParameters(*solver);
   _solver = std::move(solver);
 }
 
 void
-MFEMHypreBoomerAMG::updateSolver(mfem::ParBilinearForm & a, mfem::Array<int> & tdofs)
+MFEMHypreBoomerAMG::SetSolverParameters(mfem::HypreBoomerAMG & solver)
 {
-  if (_lor)
-  {
-    checkSpectralEquivalence(a);
-    auto lor_solver = new mfem::LORSolver<mfem::HypreBoomerAMG>(a, tdofs);
-    lor_solver->GetSolver().SetTol(getParam<mfem::real_t>("l_tol"));
-    lor_solver->GetSolver().SetMaxIter(getParam<int>("l_max_its"));
-    lor_solver->GetSolver().SetPrintLevel(getParam<int>("print_level"));
-    lor_solver->GetSolver().SetStrengthThresh(getParam<mfem::real_t>("strength_threshold"));
+  solver.iterative_mode = getParam<bool>("use_initial_guess");
+  solver.SetTol(getParam<mfem::real_t>("l_tol"));
+  solver.SetMaxIter(getParam<int>("l_max_its"));
+  solver.SetPrintLevel(getParam<int>("print_level"));
+  solver.SetStrengthThresh(getParam<mfem::real_t>("strength_threshold"));
+  solver.SetErrorMode(mfem::HypreSolver::ErrorMode(int(getParam<MooseEnum>("error_mode"))));
 
-    /// HypreBoomerAMG options for elasticity problems are not compatible with GPU execution
-    if (_mfem_fespace && !mfem::HypreUsingGPU())
-      lor_solver->GetSolver().SetElasticityOptions(_mfem_fespace.get());
-
-    _solver.reset(lor_solver);
-  }
+  if (_mfem_fespace && !mfem::HypreUsingGPU())
+    solver.SetElasticityOptions(_mfem_fespace.get());
 }
 
 #endif

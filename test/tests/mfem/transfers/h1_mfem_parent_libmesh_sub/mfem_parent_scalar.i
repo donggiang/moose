@@ -46,20 +46,16 @@
   []
 []
 
-[Preconditioner]
+[Solvers]
   [boomeramg]
     type = MFEMHypreBoomerAMG
   []
-  [jacobi]
-    type = MFEMOperatorJacobiSmoother
+  [gmres]
+    type = MFEMHypreGMRES
+    preconditioner = boomeramg
+    l_tol = 1e-12
+    l_max_its = 1000
   []
-[]
-
-[Solver]
-  type = MFEMHypreGMRES
-  preconditioner = boomeramg
-  l_tol = 1e-12
-  l_max_its = 1000
 []
 
 [Executioner]

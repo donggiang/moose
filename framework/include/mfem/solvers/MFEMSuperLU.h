@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "MFEMSolverBase.h"
+#include "MFEMLinearSolverBase.h"
 
 namespace Moose::MFEM
 {
@@ -40,18 +40,14 @@ private:
 /**
  * Wrapper for Moose::MFEM::SuperLUSolver.
  */
-class MFEMSuperLU : public MFEMSolverBase
+class MFEMSuperLU : public Moose::MFEM::LinearSolverBase
 {
 public:
   static InputParameters validParams();
 
   MFEMSuperLU(const InputParameters & parameters);
 
-protected:
-  void constructSolver() override;
-
-  /// Updates the solver with the bilinear form in case LOR solve is required
-  void updateSolver(mfem::ParBilinearForm & a, mfem::Array<int> & tdofs) override;
+  void ConstructSolver() override;
 };
 
 #endif

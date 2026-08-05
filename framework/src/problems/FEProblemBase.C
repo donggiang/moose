@@ -1176,7 +1176,10 @@ FEProblemBase::initialSetup()
       TIME_SECTION("ICinitialSetup", 5, "Setting Up Initial Conditions");
 
       for (THREAD_ID tid = 0; tid < n_threads; tid++)
+      {
         _ics.initialSetup(tid);
+        _fv_ics.initialSetup(tid);
+      }
 
       _scalar_ics.initialSetup();
     }
@@ -1249,7 +1252,7 @@ FEProblemBase::initialSetup()
 
 #ifdef LIBMESH_ENABLE_AMR
 
-  if (!_app.isRecovering())
+  if (!_app.isRecovering() && !_app.restoredInitialBackupMesh())
   {
     unsigned int n = adaptivity().getInitialSteps();
     if (n && !_app.isUltimateMaster() && _app.isRestarting())
@@ -1427,44 +1430,46 @@ FEProblemBase::initialSetup()
     Threads::parallel_reduce(bnd_nodes, bnict);
 
     // Nodal bcs aren't threaded
-    const auto & node_to_elem_map = _mesh.nodeToActiveSemilocalElemMap();
-    for (const auto & bnode : bnd_nodes)
+    for (auto & nl : _nl)
     {
-      const auto boundary_id = bnode->_bnd_id;
-      const Node * const node = bnode->_node;
-
-      if (node->processor_id() != this->processor_id())
+      const auto & nodal_bcs = nl->getNodalBCWarehouse();
+      if (!nodal_bcs.hasBoundaryObjects())
         continue;
 
-      // Only check vertices. Variables may not be defined on non-vertex nodes (think first order
-      // Lagrange on a second order mesh) and user-code can often handle that
-      const Elem * const an_elem =
-          _mesh.getMesh().elem_ptr(libmesh_map_find(node_to_elem_map, node->id()).front());
-      if (!an_elem->is_vertex(an_elem->get_node_index(node)))
-        continue;
-
-      const auto & bnd_name = _mesh.getBoundaryName(boundary_id);
-
-      for (auto & nl : _nl)
+      for (const auto & bnode : bnd_nodes)
       {
-        const auto & nodal_bcs = nl->getNodalBCWarehouse();
-        if (!nodal_bcs.hasBoundaryObjects(boundary_id, 0))
+        const auto boundary_id = bnode->_bnd_id;
+        const Node * const node = bnode->_node;
+
+        if (node->processor_id() != this->processor_id())
           continue;
 
-        const auto & bnd_objects = nodal_bcs.getBoundaryObjects(boundary_id, 0);
+        const auto & bnd_name = _mesh.getBoundaryName(boundary_id);
+
+        // Avoid assertion in getBoundaryObjects that we have boundary objects for this boundary ID
+        if (!nodal_bcs.hasBoundaryObjects(boundary_id))
+          continue;
+
+        const auto & bnd_objects = nodal_bcs.getBoundaryObjects(boundary_id);
         for (const auto & bnd_object : bnd_objects)
+        {
+          const auto & bnd_variable = bnd_object->variable();
           // Skip if this object uses geometric search because coupled variables may be defined on
-          // paired boundaries instead of the boundary this node is on
+          // paired boundaries instead of the boundary this node is on. Also skip if this boundary
+          // condition isn't applicable to the current node, e.g. if the node doesn't have any
+          // degrees of freedom for the boundary condition's variable
           if (!bnd_object->requiresGeometricSearch() &&
-              bnd_object->checkVariableBoundaryIntegrity())
+              bnd_object->checkVariableBoundaryIntegrity() &&
+              node->n_dofs(nl->number(), bnd_variable.number()))
           {
             std::set<MooseVariableFieldBase *> vars_to_omit = {
                 &static_cast<MooseVariableFieldBase &>(
-                    const_cast<MooseVariableBase &>(bnd_object->variable()))};
+                    const_cast<MooseVariableBase &>(bnd_variable))};
 
             boundaryIntegrityCheckError(
                 *bnd_object, bnd_object->checkAllVariables(*node, vars_to_omit), bnd_name);
           }
+        }
       }
     }
   }
@@ -1927,12 +1932,22 @@ FEProblemBase::prepareAssembly(const THREAD_ID tid)
   if (_has_nonlocal_coupling)
     _assembly[tid][_current_nl_sys->number()]->prepareNonlocal();
 
-  if (_displaced_problem && (_reinit_displaced_elem || _reinit_displaced_face))
+  if (_displaced_problem &&
+      (_reinit_displaced_elem || _reinit_displaced_face || _reinit_displaced_neighbor))
   {
     _displaced_problem->prepareAssembly(tid);
     if (_has_nonlocal_coupling)
       _displaced_problem->prepareNonlocal(tid);
   }
+}
+
+void
+FEProblemBase::prepareAssemblyNeighbor(const THREAD_ID tid)
+{
+  _assembly[tid][_current_nl_sys->number()]->prepareNeighbor();
+
+  if (_displaced_problem && (_reinit_displaced_face || _reinit_displaced_neighbor))
+    _displaced_problem->prepareAssemblyNeighbor(tid);
 }
 
 void
@@ -3035,6 +3050,8 @@ FEProblemBase::addVariable(const std::string & var_type,
   _solver_var_to_sys_num[var_name] = solver_system_number;
 
   markFamilyPRefinement(params);
+  if (_displaced_problem)
+    _displaced_problem->markFamilyPRefinement(params);
 }
 
 std::pair<bool, unsigned int>
@@ -3335,6 +3352,8 @@ FEProblemBase::addAuxVariable(const std::string & var_type,
     _displaced_problem->addAuxVariable(var_type, var_name, params);
 
   markFamilyPRefinement(params);
+  if (_displaced_problem)
+    _displaced_problem->markFamilyPRefinement(params);
 }
 
 void
@@ -3383,6 +3402,8 @@ FEProblemBase::addAuxVariable(const std::string & var_name,
     _displaced_problem->addAuxVariable("MooseVariable", var_name, params);
 
   markFamilyPRefinement(params);
+  if (_displaced_problem)
+    _displaced_problem->markFamilyPRefinement(params);
 }
 
 void
@@ -3415,6 +3436,8 @@ FEProblemBase::addAuxArrayVariable(const std::string & var_name,
     _displaced_problem->addAuxVariable("ArrayMooseVariable", var_name, params);
 
   markFamilyPRefinement(params);
+  if (_displaced_problem)
+    _displaced_problem->markFamilyPRefinement(params);
 }
 
 void
@@ -4773,7 +4796,15 @@ FEProblemBase::getFVInterpolationMethod(const InterpolationMethodName & name,
       .queryInto(methods);
 
   if (methods.empty())
+  {
+    mooseAssert(getMooseApp().actionWarehouse().isTaskComplete("add_interpolation_method"),
+                "An FVInterpolationMethod getter was called before FVInterpolationMethods have "
+                "been constructed. If you are attempting to access this object in the constructor "
+                "of another object then make sure that the FVInterpolationMethod is constructed "
+                "before the object using it.");
+
     mooseError("Unable to find FVInterpolationMethod with name '", name, "'");
+  }
 
   mooseAssert(methods.size() == 1, "Expected a single FVInterpolationMethod per thread");
   return *(methods[0]);
@@ -5453,8 +5484,7 @@ FEProblemBase::computeUserObjectsInternal(const ExecFlagType & type, TheWarehous
         {
           // go over mortar interfaces and construct functors
           const auto & mortar_interfaces = getMortarInterfaces(displaced);
-          for (const auto & [primary_secondary_boundary_pair, mortar_generation_ptr] :
-               mortar_interfaces)
+          for (const auto & [primary_secondary_boundary_pair, interface_config] : mortar_interfaces)
           {
             auto mortar_uos_to_execute =
                 getMortarUserObjects(primary_secondary_boundary_pair.first,
@@ -5466,7 +5496,7 @@ FEProblemBase::computeUserObjectsInternal(const ExecFlagType & type, TheWarehous
                                           ? static_cast<SubProblem *>(_displaced_problem.get())
                                           : static_cast<SubProblem *>(this);
             MortarUserObjectThread muot(mortar_uos_to_execute,
-                                        *mortar_generation_ptr,
+                                        *interface_config.amg,
                                         *subproblem,
                                         *this,
                                         displaced,
@@ -6682,13 +6712,13 @@ FEProblemBase::areCoupled(const unsigned int ivar,
   return (*_cm[nl_sys])(ivar, jvar);
 }
 
-std::vector<std::pair<MooseVariableFEBase *, MooseVariableFEBase *>> &
+std::vector<std::pair<MooseVariableFieldBase *, MooseVariableFieldBase *>> &
 FEProblemBase::couplingEntries(const THREAD_ID tid, const unsigned int nl_sys)
 {
   return _assembly[tid][nl_sys]->couplingEntries();
 }
 
-std::vector<std::pair<MooseVariableFEBase *, MooseVariableFEBase *>> &
+std::vector<std::pair<MooseVariableFieldBase *, MooseVariableFieldBase *>> &
 FEProblemBase::nonlocalCouplingEntries(const THREAD_ID tid, const unsigned int nl_sys)
 {
   return _assembly[tid][nl_sys]->nonlocalCouplingEntries();
@@ -8376,7 +8406,11 @@ FEProblemBase::createMortarInterface(
     bool periodic,
     const bool debug,
     const bool correct_edge_dropping,
-    const Real minimum_projection_angle)
+    const Real minimum_projection_angle,
+    const Mortar3DSubpatchPlane mortar_3d_subpatch_plane,
+    const MooseEnum & triangulation,
+    const bool triangulate_triangles,
+    const Mortar3DQuadraturePointMapping mortar_3d_qp_mapping)
 {
   _has_mortar = true;
 
@@ -8388,7 +8422,11 @@ FEProblemBase::createMortarInterface(
                                                periodic,
                                                debug,
                                                correct_edge_dropping,
-                                               minimum_projection_angle);
+                                               minimum_projection_angle,
+                                               mortar_3d_subpatch_plane,
+                                               triangulation,
+                                               triangulate_triangles,
+                                               mortar_3d_qp_mapping);
   else
     return _mortar_data->createMortarInterface(primary_secondary_boundary_pair,
                                                primary_secondary_subdomain_pair,
@@ -8397,7 +8435,11 @@ FEProblemBase::createMortarInterface(
                                                periodic,
                                                debug,
                                                correct_edge_dropping,
-                                               minimum_projection_angle);
+                                               minimum_projection_angle,
+                                               mortar_3d_subpatch_plane,
+                                               triangulation,
+                                               triangulate_triangles,
+                                               mortar_3d_qp_mapping);
 }
 
 const AutomaticMortarGeneration &
@@ -8644,6 +8686,8 @@ FEProblemBase::meshChanged(const bool intermediate_change,
                            const bool clean_refinement_flags)
 {
   TIME_SECTION("meshChanged", 3, "Handling Mesh Changes");
+
+  _app.markMeshChangedForBackup();
 
   if (_material_props.hasStatefulProperties() || _bnd_material_props.hasStatefulProperties() ||
       _neighbor_material_props.hasStatefulProperties())
@@ -10034,8 +10078,7 @@ FEProblemBase::checkNonlocalCouplingRequirement() const
   return _requires_nonlocal_coupling;
 }
 
-const std::unordered_map<std::pair<BoundaryID, BoundaryID>,
-                         std::unique_ptr<AutomaticMortarGeneration>> &
+const std::unordered_map<std::pair<BoundaryID, BoundaryID>, MortarInterfaceConfig> &
 FEProblemBase::getMortarInterfaces(bool on_displaced) const
 {
   return _mortar_data->getMortarInterfaces(on_displaced);

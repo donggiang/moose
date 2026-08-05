@@ -1,7 +1,6 @@
 [Mesh]
   type = MFEMMesh
   file = ../mesh/mug.e
-  dim = 3
 []
 
 [Problem]
@@ -65,25 +64,34 @@
   []
 []
 
-[Preconditioner]
+
+[Solvers]
+  inactive = 'jacobi'
   [boomeramg]
     type = MFEMHypreBoomerAMG
   []
   [jacobi]
     type = MFEMOperatorJacobiSmoother
   []
-[]
-
-[Solver]
-  type = MFEMHypreGMRES
-  preconditioner = boomeramg
-  l_tol = 1e-16
-  l_max_its = 1000
+  [main]
+    type = MFEMHypreGMRES
+    preconditioner = boomeramg
+    l_tol = 1e-16
+    l_max_its = 1000
+  []
 []
 
 [Executioner]
   type = MFEMSteady
   device = cpu
+[]
+
+[Postprocessors]
+  [solution_l2_norm]
+    type = MFEML2Error
+    variable = concentration
+    function = 0
+  []
 []
 
 [Outputs]

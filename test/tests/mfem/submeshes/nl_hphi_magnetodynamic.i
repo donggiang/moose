@@ -12,8 +12,8 @@ e_c = 1.0
 []
 
 [Mesh]
-    type = MFEMMesh
-    file = ../mesh/split_embedded_concentric_torus.e
+  type = MFEMMesh
+  file = ../mesh/split_embedded_concentric_torus.e
 []
 
 [SubMeshes]
@@ -125,19 +125,24 @@ e_c = 1.0
   []
 []
 
-[Preconditioner]
+[Solvers]
   [ams]
     type = MFEMHypreAMS
     fespace = CoilHCurlFESpace
   []
-[]
-
-[Solver]
-  type = MFEMHyprePCG
-  preconditioner = ams
-  l_tol = 1e-12
-  l_max_its = 100
-  print_level = 0
+  [pcg]
+    type = MFEMHyprePCG
+    preconditioner = ams
+    l_tol = 1e-12
+    l_max_its = 100
+    print_level = 0
+  []
+  [newton]
+    type = MFEMNewtonNonlinearSolver
+    max_its = 150
+    abs_tol = 1e-5
+    print_level = 1
+  []
 []
 
 [Executioner]
@@ -145,9 +150,6 @@ e_c = 1.0
   dt = 0.5
   start_time = 0.0
   end_time = 2.0
-  nl_max_its = 150
-  nl_abs_tol = 1e-5
-  print_level = 1
 []
 
 [MultiApps]

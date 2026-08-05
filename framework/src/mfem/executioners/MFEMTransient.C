@@ -47,6 +47,18 @@ MFEMTransient::init()
 {
   TransientBase::init();
 
+  // verify that the requested time integration scheme is actually supported by MFEM transient
+  if (getTimeScheme() != Moose::TimeIntegratorType::TI_IMPLICIT_EULER)
+    paramError("scheme",
+               "Time Integration scheme \"" + stringify(getTimeScheme()) +
+                   "\" is not supported by MFEMTransient Executioner.");
+
+  if (_mfem_problem_data.nonlinear_solver)
+    _mfem_problem_data.eqn_system->SetGradientRequired(
+        _mfem_problem_data.nonlinear_solver->RequiresGradient());
+
+  _mfem_problem_data.eqn_system->SetCoefficientManager(_mfem_problem_data.coefficients);
+
   // Set up initial conditions
   _mfem_problem_data.eqn_system->Init(
       _mfem_problem_data.gridfunctions,
@@ -56,7 +68,7 @@ MFEMTransient::init()
   for (const auto & problem_operator : getProblemOperators())
   {
     problem_operator->SetGridFunctions();
-    problem_operator->Init(_mfem_problem_data.f);
+    problem_operator->Init(_mfem_problem_data.true_solution);
   }
 }
 
@@ -80,6 +92,13 @@ MFEMTransient::takeStep(Real input_dt)
   _time -= _dt;
 
   _problem.onTimestepBegin();
+  _problem.execTransfers(EXEC_TIMESTEP_BEGIN);
+  if (!_problem.execMultiApps(EXEC_TIMESTEP_BEGIN, true))
+  {
+    _last_solve_converged = false;
+    return;
+  }
+  _problem.execute(EXEC_TIMESTEP_BEGIN);
 
   // Advance time step of the MFEM problem. Time is also updated here, and
   // _problem_operator->SetTime is called inside the ode_solver->Step method to
@@ -94,6 +113,10 @@ MFEMTransient::takeStep(Real input_dt)
     _console << "Aborting as solve did not converge" << std::endl;
     return;
   }
+
+  _problem.execute(EXEC_TIMESTEP_END);
+  _problem.execTransfers(EXEC_TIMESTEP_END);
+  _problem.execMultiApps(EXEC_TIMESTEP_END, true);
 
   if (lastSolveConverged())
     _time_stepper->acceptStep();

@@ -25,6 +25,7 @@
 #include "ElemInfo.h"
 
 #include <memory> //std::unique_ptr
+#include <filesystem>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -182,6 +183,17 @@ public:
   virtual void buildMesh() = 0;
 
   /**
+   * Write the mesh files needed for recovery/checkpointing.
+   *
+   * The base implementation writes the libMesh checkpoint mesh.
+   * Derived classes may extend this to write additional backend-specific files.
+   *
+   * @return The additional backend-specific files written by the derived class.
+   */
+  virtual std::vector<std::filesystem::path>
+  writeRecoveryFiles(const std::filesystem::path & file_base);
+
+  /**
    * Returns MeshBase::mesh_dimension(), (not
    * MeshBase::spatial_dimension()!) of the underlying libMesh mesh
    * object.
@@ -252,16 +264,7 @@ public:
    * If not already created, creates a map from every node to all
    * elements to which they are connected.
    */
-  const std::map<dof_id_type, std::vector<dof_id_type>> & nodeToElemMap();
-
-  /**
-   * If not already created, creates a map from every node to all
-   * _active_ _semilocal_ elements to which they are connected.
-   * Semilocal elements include local elements and elements that share at least
-   * one node with a local element.
-   * \note Extra ghosted elements are not included in this map!
-   */
-  const std::map<dof_id_type, std::vector<dof_id_type>> & nodeToActiveSemilocalElemMap();
+  const std::unordered_map<dof_id_type, std::vector<dof_id_type>> & nodeToElemMap();
 
   /**
    * These structs are required so that the bndNodes{Begin,End} and
@@ -449,7 +452,7 @@ public:
    * Return pointers to range objects for various types of ranges
    * (local nodes, boundary elems, etc.).
    */
-  libMesh::ConstElemRange * getActiveLocalElementRange();
+  const libMesh::ConstElemRange * getActiveLocalElementRange();
   libMesh::NodeRange * getActiveNodeRange();
   SemiLocalNodeRange * getActiveSemiLocalNodeRange() const;
   libMesh::ConstNodeRange * getLocalNodeRange();
@@ -554,11 +557,12 @@ public:
    * @param mesh_to_clone If nonnull, we will clone this mesh instead of preparing our current one
    * @return Whether the libMesh mesh was prepared. This should really only be relevant in MOOSE
    * framework contexts where we need to make a decision about what to do with the displaced mesh.
-   * If the reference mesh base object has \p prepare_for_use called (e.g. this method returns \p
-   * true when called for the reference mesh), then we must pass the reference mesh base object into
-   * this method when we call this for the displaced mesh. This is because the displaced mesh \emph
-   * must be an exact clone of the reference mesh. We have seen that \p prepare_for_use called on
-   * two previously identical meshes can result in two different meshes even with Metis partitioning
+   * If the reference mesh base object has \p complete_preparation() called (e.g. this method
+   * returns \p true when called for the reference mesh), then we must pass the reference mesh base
+   * object into this method when we call this for the displaced mesh. This is because the displaced
+   * mesh \emph must be an exact clone of the reference mesh. We have seen that \p
+   * complete_preparation() called on two previously identical meshes can result in two different
+   * meshes even with Metis partitioning
    */
   bool prepare(const MeshBase * mesh_to_clone);
 
@@ -1557,7 +1561,19 @@ public:
   /// Return displace node list by side list boolean
   bool getDisplaceNodeListBySideList() { return _displace_node_list_by_side_list; }
 
+  /**
+   * rebuild the node to element map if it's been requsted previously
+   * @returns Whether the map was re-built, or equivalently whether the map had been requested
+   * previously
+   */
+  bool possiblyRebuildNodeToElemMap();
+
 protected:
+  /**
+   * Returns whether this mesh is allowed to read a recovery file.
+   */
+  bool allowRecovery() const { return _allow_recovery; }
+
   /// Deprecated (DO NOT USE)
   std::vector<std::unique_ptr<libMesh::GhostingFunctor>> _ghosting_functors;
 
@@ -1642,11 +1658,9 @@ protected:
   std::set<Node *> _semilocal_node_list;
 
   /**
-   * A range for use with threading.  We do this so that it doesn't have
-   * to get rebuilt all the time (which takes time).
+   * Ranges for use with threading, cached so they don't have to get
+   * rebuilt all the time (which takes time).
    */
-  std::unique_ptr<libMesh::ConstElemRange> _active_local_elem_range;
-
   std::unique_ptr<SemiLocalNodeRange> _active_semilocal_node_range;
   std::unique_ptr<libMesh::NodeRange> _active_node_range;
   std::unique_ptr<libMesh::ConstNodeRange> _local_node_range;
@@ -1656,12 +1670,10 @@ protected:
       _bnd_elem_range;
 
   /// A map of all of the current nodes to the elements that they are connected to.
-  std::map<dof_id_type, std::vector<dof_id_type>> _node_to_elem_map;
-  bool _node_to_elem_map_built;
+  std::unordered_map<dof_id_type, std::vector<dof_id_type>> _node_to_elem_map;
 
-  /// A map of all of the current nodes to the active elements that they are connected to.
-  std::map<dof_id_type, std::vector<dof_id_type>> _node_to_active_semilocal_elem_map;
-  bool _node_to_active_semilocal_elem_map_built;
+  /// Whether @p _node_to_elem_map has been built.
+  bool _node_to_elem_map_built = false;
 
   /**
    * A set of subdomain IDs currently present in the mesh. For parallel meshes, includes
@@ -1745,6 +1757,12 @@ protected:
   void setPartitionerHelper(MeshBase * mesh = nullptr);
 
 private:
+  /**
+   * If not already created, creates a map from every node to all
+   * elements to which they are connected.
+   */
+  std::unordered_map<dof_id_type, std::vector<dof_id_type>> & internalNodeToElemMap();
+
   /// Map connecting elems with their corresponding ElemInfo, we use the element ID as
   /// the key
   mutable std::unordered_map<dof_id_type, ElemInfo> _elem_to_elem_info;

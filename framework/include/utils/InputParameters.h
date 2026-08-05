@@ -915,7 +915,42 @@ public:
    * @param coupling_name The name of the coupled variable to test for
    * @return True if the variable exists in the coupled variables for this InputParameters object
    */
-  bool hasCoupledValue(const std::string & coupling_name) const;
+  bool hasCoupledVar(const std::string & coupling_name) const;
+
+  /**
+   * Return whether or not the coupled variable exists
+   * @param coupling_name The name of the coupled variable to test for
+   * @return True if the variable exists in the coupled variables for this InputParameters object
+   */
+  bool hasCoupledValue(const std::string & coupling_name) const
+  {
+    mooseDeprecated("InputParameters::hasCoupledValue() is deprecated. Use "
+                    "InputParameters::hasCoupledVar() instead.");
+    return hasCoupledVar(coupling_name);
+  }
+
+  /**
+   * Set a coupled variable parameter to a single variable name.
+   *
+   * @param coupling_name The name of the coupling parameter to set.
+   * @param value The variable name to set.
+   */
+  void setCoupledVar(const std::string & coupling_name, const std::string & value);
+
+  /**
+   * Set a coupled variable parameter to multiple variable names.
+   *
+   * @param coupling_name The name of the coupling parameter to set.
+   * @param values The variable names to set.
+   */
+  void setCoupledVar(const std::string & coupling_name, const std::vector<VariableName> & values);
+
+  /**
+   * Get a coupled variable parameter.
+   *
+   * @param coupling_name The name of the coupling parameter to get.
+   */
+  const std::vector<VariableName> & getCoupledVar(const std::string & coupling_name) const;
 
   /**
    * Return whether or not the requested parameter has a default coupled value.
@@ -1054,7 +1089,8 @@ public:
   /**
    * Query a parameter
    *
-   * If the parameter is not valid, nullptr will be returned
+   * If a parameter of the given name and type does not exist or if the
+   * parameter is not valid, nullptr will be returned
    *
    * @param name The name of the parameter
    * @return A pointer to the parameter value, if it exists
@@ -2051,7 +2087,8 @@ InputParameters::addOptionalValuedCommandLineParam(const std::string & name,
                                                    const T & value,
                                                    const std::string & doc_string)
 {
-  mooseAssert(name == "csg_only" || name == "mesh_only" || name == "recover" || name == "run",
+  mooseAssert(name == "citations" || name == "csg_only" || name == "mesh_only" ||
+                  name == "recover" || name == "run",
               "Not supported for new parameters");
   static_assert(!std::is_same_v<T, bool>, "Cannot be used for a bool (does not take a value)");
   addParam<T>(name, value, doc_string);
@@ -2273,7 +2310,7 @@ template <typename T>
 const T *
 InputParameters::queryParam(const std::string & name) const
 {
-  return isParamValid(name) ? &getParamHelper<T>(name, *this) : nullptr;
+  return have_parameter<T>(name) && isParamValid(name) ? &getParamHelper<T>(name, *this) : nullptr;
 }
 
 template <typename T>
@@ -2377,7 +2414,7 @@ InputParameters::transferParam(const InputParameters & source_params,
 {
   const auto name = source_params.checkForRename(std::string(name_in));
   const auto p_name = new_name.empty() ? name_in : new_name;
-  if (!source_params.have_parameter<T>(name) && !source_params.hasCoupledValue(name))
+  if (!source_params.have_parameter<T>(name) && !source_params.hasCoupledVar(name))
     mooseError("The '",
                name_in,
                "' parameter could not be transferred because it does not exist with type '",
@@ -2393,7 +2430,7 @@ InputParameters::transferParam(const InputParameters & source_params,
   if (source_params.isParamRequired(name))
   {
     // Check for a variable parameter
-    if (source_params.hasCoupledValue(name))
+    if (source_params.hasCoupledVar(name))
       addRequiredCoupledVar(p_name, description);
     // Enums parameters have a default list of options
     else if constexpr (std::is_same_v<MooseEnum, T> || std::is_same_v<MultiMooseEnum, T>)
@@ -2407,7 +2444,7 @@ InputParameters::transferParam(const InputParameters & source_params,
   else
   {
     // Check for a variable parameter
-    if (source_params.hasCoupledValue(name))
+    if (source_params.hasCoupledVar(name))
     {
       if (!source_params.hasDefaultCoupledValue(name))
         addCoupledVar(p_name, description);

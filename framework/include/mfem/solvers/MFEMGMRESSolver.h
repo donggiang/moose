@@ -11,23 +11,23 @@
 
 #pragma once
 
-#include "MFEMSolverBase.h"
+#include "MFEMLORLinearSolverBase.h"
 
 /**
  * Wrapper for mfem::GMRESSolver.
  */
-class MFEMGMRESSolver : public MFEMSolverBase
+class MFEMGMRESSolver : public Moose::MFEM::LORLinearSolverBase<mfem::GMRESSolver>
 {
 public:
   static InputParameters validParams();
 
   MFEMGMRESSolver(const InputParameters & parameters);
 
-  /// Updates the solver with the bilinear form in case LOR solve is required
-  void updateSolver(mfem::ParBilinearForm & a, mfem::Array<int> & tdofs) override;
+  void ConstructSolver() override;
 
 protected:
-  void constructSolver() override;
+  /// Update the wrapped MFEM solver parameters
+  virtual void SetSolverParameters(mfem::GMRESSolver & solver) override;
 };
 
 #endif

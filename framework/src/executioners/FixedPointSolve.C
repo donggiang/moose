@@ -262,7 +262,7 @@ FixedPointSolve::solve()
   {
     // Snag all of the local dof indices for all of these variables
     AllLocalDofIndicesThread aldit(_problem, _transformed_vars);
-    libMesh::ConstElemRange & elem_range = *_problem.mesh().getActiveLocalElementRange();
+    const libMesh::ConstElemRange & elem_range = *_problem.mesh().getActiveLocalElementRange();
     Threads::parallel_reduce(elem_range, aldit);
 
     transformed_dofs = aldit.getDofIndices();
@@ -276,7 +276,7 @@ FixedPointSolve::solve()
     {
       // Snag all of the local dof indices for all of these variables
       AllLocalDofIndicesThread aldit(_problem, _secondary_transformed_variables);
-      libMesh::ConstElemRange & elem_range = *_problem.mesh().getActiveLocalElementRange();
+      const libMesh::ConstElemRange & elem_range = *_problem.mesh().getActiveLocalElementRange();
       Threads::parallel_reduce(elem_range, aldit);
 
       secondary_transformed_dofs = aldit.getDofIndices();
@@ -547,7 +547,9 @@ FixedPointSolve::examineFixedPointConvergence(bool & converged)
   _problem.execute(EXEC_MULTIAPP_FIXED_POINT_CONVERGENCE);
 
   auto & convergence = _problem.getConvergence(_problem.getMultiAppFixedPointConvergenceName());
-  const auto status = convergence.checkConvergence(_fixed_point_it);
+  // checkConvergence expects the number of iterations performed, not the iteration index:
+  const auto n_iter = _fixed_point_it + 1;
+  const auto status = convergence.checkConvergence(n_iter);
   switch (status)
   {
     case Convergence::MooseConvergenceStatus::CONVERGED:

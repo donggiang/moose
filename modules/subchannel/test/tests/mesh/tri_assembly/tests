@@ -1,0 +1,19 @@
+[Tests]
+  design = 'SCMTriAssemblyMeshGenerator.md'
+  issues = '#29194 #33388'
+  [tricoords3]
+    type = Exodiff
+    input = tricoords3.i
+    exodiff = tricoords3_in.e
+    cli_args = "--mesh-only"
+    recover = false
+    requirement = 'The system will create a subchannel mesh for triangular assemblies'
+  []
+  [tricoords2]
+    type = RunApp
+    input = tricoords2.i
+    cli_args = "--mesh-only"
+    recover = false
+    requirement = 'The system will create a 7-pin subchannel mesh for triangular assemblies'
+  []
+[]

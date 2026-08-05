@@ -62,26 +62,18 @@ TimeDependentEquationSystemProblemOperator::ImplicitSolve(const mfem::real_t dt,
                                                           mfem::Vector & X_new)
 {
   _problem_data.coefficients.setTime(GetTime());
-  BuildEquationSystemOperator(dt);
+  FormEquationSystemOperator(dt);
 
-  if (_problem_data.jacobian_solver->isLOR() && GetEquationSystem()->GetTestVarNames().size() > 1)
-    mooseError("LOR solve is only supported for single-variable systems");
-  _problem_data.jacobian_solver->updateSolver(
-      *GetEquationSystem()->_blfs.Get(GetEquationSystem()->GetTestVarNames().at(0)),
-      GetEquationSystem()->_ess_tdof_lists.at(0));
+  auto * const es = GetEquationSystem();
+  SolveWithOperator(*es, _true_rhs, _true_x);
 
-  _problem_data.nonlinear_solver->SetPreconditioner(_problem_data.jacobian_solver->getSolver());
-  _problem_data.nonlinear_solver->SetOperator(*GetEquationSystem());
-  _problem_data.nonlinear_solver->Mult(_true_rhs, _true_x);
-
-  X_new = _true_x;
+  X_new.MakeRef(_true_x, 0);
 }
 
 void
-TimeDependentEquationSystemProblemOperator::BuildEquationSystemOperator(mfem::real_t dt)
+TimeDependentEquationSystemProblemOperator::FormEquationSystemOperator(mfem::real_t dt)
 {
   GetEquationSystem()->SetTimeStep(dt);
-  GetEquationSystem()->BuildEquationSystem();
   GetEquationSystem()->FormSystem(_true_x, _true_rhs);
 }
 

@@ -17,7 +17,7 @@ registerMooseObject("MooseApp", MFEMHypreFGMRES);
 InputParameters
 MFEMHypreFGMRES::validParams()
 {
-  InputParameters params = MFEMSolverBase::validParams();
+  InputParameters params = Moose::MFEM::LORLinearSolverBase<mfem::HypreFGMRES>::validParams();
   params.addClassDescription("Hypre solver for the iterative solution of MFEM equation systems "
                              "using the flexible generalized minimal residual method.");
   params.addParam<mfem::real_t>("l_tol", 1e-5, "Set the relative tolerance.");
@@ -29,46 +29,29 @@ MFEMHypreFGMRES::validParams()
   return params;
 }
 
-MFEMHypreFGMRES::MFEMHypreFGMRES(const InputParameters & parameters) : MFEMSolverBase(parameters)
+MFEMHypreFGMRES::MFEMHypreFGMRES(const InputParameters & parameters)
+  : Moose::MFEM::LORLinearSolverBase<mfem::HypreFGMRES>(parameters)
 {
-  constructSolver();
+  ConstructSolver();
 }
 
 void
-MFEMHypreFGMRES::constructSolver()
+MFEMHypreFGMRES::ConstructSolver()
 {
   auto solver = std::make_unique<mfem::HypreFGMRES>(getMFEMProblem().getComm());
-  solver->SetTol(getParam<mfem::real_t>("l_tol"));
-  solver->SetMaxIter(getParam<int>("l_max_its"));
-  solver->SetKDim(getParam<int>("kdim"));
-  solver->SetPrintLevel(getParam<int>("print_level"));
-  setPreconditioner(*solver);
+  SetSolverParameters(*solver);
+  SetPreconditioner(*solver);
   _solver = std::move(solver);
 }
 
 void
-MFEMHypreFGMRES::updateSolver(mfem::ParBilinearForm & a, mfem::Array<int> & tdofs)
+MFEMHypreFGMRES::SetSolverParameters(mfem::HypreFGMRES & solver)
 {
-  if (_lor && _preconditioner)
-    mooseError("LOR solver cannot take a preconditioner");
-
-  if (_preconditioner)
-  {
-    _preconditioner->updateSolver(a, tdofs);
-    setPreconditioner(static_cast<mfem::HypreFGMRES &>(*_solver));
-  }
-  else if (_lor)
-  {
-    checkSpectralEquivalence(a);
-    mfem::ParLORDiscretization lor_disc(a, tdofs);
-    auto lor_solver = new mfem::LORSolver<mfem::HypreFGMRES>(lor_disc, getMFEMProblem().getComm());
-    lor_solver->GetSolver().SetTol(getParam<mfem::real_t>("l_tol"));
-    lor_solver->GetSolver().SetMaxIter(getParam<int>("l_max_its"));
-    lor_solver->GetSolver().SetKDim(getParam<int>("kdim"));
-    lor_solver->GetSolver().SetPrintLevel(getParam<int>("print_level"));
-
-    _solver.reset(lor_solver);
-  }
+  solver.iterative_mode = getParam<bool>("use_initial_guess");
+  solver.SetTol(getParam<mfem::real_t>("l_tol"));
+  solver.SetMaxIter(getParam<int>("l_max_its"));
+  solver.SetKDim(getParam<int>("kdim"));
+  solver.SetPrintLevel(getParam<int>("print_level"));
 }
 
 #endif

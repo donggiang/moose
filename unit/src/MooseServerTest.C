@@ -12,6 +12,7 @@
 #include "MooseServer.h"
 #include "MooseApp.h"
 #include "Moose.h"
+#include "Registry.h"
 #include "MooseMain.h"
 #include "AppFactory.h"
 #include "MooseUtils.h"
@@ -20,6 +21,7 @@
 #include "FEProblemBase.h"
 #include "InputParameters.h"
 #include "Distribution.h"
+#include "Parser.h"
 #include "pcrecpp.h"
 #include "waspcore/Object.h"
 #include "wasplsp/LSP.h"
@@ -71,6 +73,22 @@ protected:
 };
 
 registerMooseObject("MooseUnitApp", TestDistribution);
+
+// object registered only to OtherMooseUnitApp for Application/type testing
+class AppTypeTestDistribution : public TestDistribution
+{
+public:
+  static InputParameters validParams()
+  {
+    InputParameters params = TestDistribution::validParams();
+    params.addClassDescription("Distribution registered only to OtherMooseUnitApp.");
+
+    return params;
+  }
+  AppTypeTestDistribution(const InputParameters & parameters) : TestDistribution(parameters) {}
+};
+
+registerMooseObject("OtherMooseUnitApp", AppTypeTestDistribution);
 
 class MooseServerTest : public ::testing::Test
 {
@@ -952,13 +970,6 @@ TEST_F(MooseServerTest, DocumentChangeAndDiagnostics)
 
   std::string diagnostics_expect = R"INPUT(
 line:18 column:4 - BCs/all/boundary: the following side sets (ids) do not exist on the mesh: top (2), bottom (3)
-
-MOOSE distinguishes between "node sets" and "side sets" depending on whether
-you are using "Nodal" or "Integrated" BCs respectively. Node sets corresponding
-to your side sets are constructed for you by default.
-
-Try setting "Mesh/construct_side_list_from_node_list=true" if you see this error.
-Note: If you are running with adaptivity you should prefer using side sets.
 )INPUT";
 
   EXPECT_EQ(diagnostics_expect, "\n" + diagnostics_actual.str());
@@ -1147,6 +1158,13 @@ TEST_F(MooseServerTest, CompletionMeshDefaultedType)
     system_info = AUX
     execute_on = LINEAR
     wall_time_interval = 3600
+  []
+[]
+[Kernels]
+  [diff]
+    type = Diffusion
+    variable = u
+    displacements = 'disp_x'
   []
 []
 )INPUT";
@@ -1351,17 +1369,17 @@ label: Transient          text: Transient                            desc: Execu
 
 TEST_F(MooseServerTest, CompletionValueInputLookups)
 {
-  // completion test parameters - on displacements parameter value in VacuumBC
+  // completion test parameters - on displacements parameter value in Diffusion kernel
   std::string doc_uri = wasp::lsp::m_uri_prefix + test_input_path;
   int request_id = 10;
-  int request_line = 26;
+  int request_line = 55;
   int request_char = 21;
   std::size_t expect_count = 4;
   std::string expect_items = R"INPUT(
-label: disp_x text: disp_x desc: from /AuxVariables/* pos: [26.21]-[26.27] kind: 18 format: snippet
-label: disp_y text: disp_y desc: from /AuxVariables/* pos: [26.21]-[26.27] kind: 18 format: snippet
-label: u      text: u      desc: from /Variables/*    pos: [26.21]-[26.27] kind: 18 format: snippet
-label: v      text: v      desc: from /Variables/*    pos: [26.21]-[26.27] kind: 18 format: snippet
+label: disp_x text: disp_x desc: from /AuxVariables/* pos: [55.21]-[55.27] kind: 18 format: snippet
+label: disp_y text: disp_y desc: from /AuxVariables/* pos: [55.21]-[55.27] kind: 18 format: snippet
+label: u      text: u      desc: from /Variables/*    pos: [55.21]-[55.27] kind: 18 format: snippet
+label: v      text: v      desc: from /Variables/*    pos: [55.21]-[55.27] kind: 18 format: snippet
 )INPUT";
   check_completions(request_id, doc_uri, request_line, request_char, expect_count, expect_items);
 }
@@ -1423,11 +1441,11 @@ document_uri: "file://...absolute.../framework/src/executioners/Transient.C"    
 
 TEST_F(MooseServerTest, DefinitionInputFileLookups)
 {
-  // definition test parameters - on AuxVariables defined displacements disp_x
+  // definition test parameters - on Kernels defined displacements disp_x
 
   int request_id = 12;
   std::string doc_uri = wasp::lsp::m_uri_prefix + test_input_path;
-  int line = 26;
+  int line = 55;
   int character = 21;
 
   // build definition request with the test parameters
@@ -1676,7 +1694,6 @@ TEST_F(MooseServerTest, DocumentReferencesRequest)
     type = VacuumBC
     boundary = right
     variable = v
-    displacements = 'u v u v u'
   []
 []
 [Executioner]
@@ -1726,7 +1743,7 @@ TEST_F(MooseServerTest, DocumentReferencesRequest)
       references_response, response_errors, response_id, locations_array));
   EXPECT_TRUE(response_errors.str().empty());
   EXPECT_EQ(request_id, response_id);
-  EXPECT_EQ(6u, locations_array.size());
+  EXPECT_EQ(3u, locations_array.size());
 
   // make formatted list of response references and check it is as expected
   std::ostringstream locations_actual;
@@ -1735,9 +1752,6 @@ TEST_F(MooseServerTest, DocumentReferencesRequest)
 document_uri: "file://...absolute.../unit/test.i"    location_start: [6.3]    location_end: [6.4]
 document_uri: "file://...absolute.../unit/test.i"    location_start: [12.15]    location_end: [12.18]
 document_uri: "file://...absolute.../unit/test.i"    location_start: [19.15]    location_end: [19.16]
-document_uri: "file://...absolute.../unit/test.i"    location_start: [26.21]    location_end: [26.22]
-document_uri: "file://...absolute.../unit/test.i"    location_start: [26.25]    location_end: [26.26]
-document_uri: "file://...absolute.../unit/test.i"    location_start: [26.29]    location_end: [26.30]
 )INPUT";
   EXPECT_EQ(locations_expect, "\n" + locations_actual.str());
 }
@@ -2563,7 +2577,7 @@ TEST_F(MooseServerTest, CompletionVariousWarehouses)
     boundary = 'left right top bottom'
     variable      =  # NonlinearVariableName - inp_reg_var + act_reg_var + tst_reg_var
     save_in       =  # AuxVariableName       - inp_aux_var + tst_aux_var
-    displacements =  # VariableName          - inp_reg_var + act_reg_var + tst_reg_var + inp_aux_var + tst_aux_var
+
   []
 []
 [Materials]
@@ -2686,20 +2700,6 @@ label: tst_aux_var text: tst_aux_var desc: from AuxiliarySys... pos: [23.20]-[23
 )INPUT";
   check_completions(request_id, doc_uri, request_line, request_char, expect_count, expect_items);
 
-  // check warehouse completion 03 - VariableName displacements in VacuumBC
-  request_id = 37;
-  request_line = 24;
-  request_char = 20;
-  expect_count = 5;
-  expect_items = R"INPUT(
-label: act_reg_var text: act_reg_var desc: from NonlinearSys... pos: [24.20]-[24.20] kind: 18 format: snippet
-label: inp_aux_var text: inp_aux_var desc: from AuxiliarySys... pos: [24.20]-[24.20] kind: 18 format: snippet
-label: inp_reg_var text: inp_reg_var desc: from NonlinearSys... pos: [24.20]-[24.20] kind: 18 format: snippet
-label: tst_aux_var text: tst_aux_var desc: from AuxiliarySys... pos: [24.20]-[24.20] kind: 18 format: snippet
-label: tst_reg_var text: tst_reg_var desc: from NonlinearSys... pos: [24.20]-[24.20] kind: 18 format: snippet
-)INPUT";
-  check_completions(request_id, doc_uri, request_line, request_char, expect_count, expect_items);
-
   // check warehouse completion 04 - MaterialName in ElementMaterialSampler
   request_id = 38;
   request_line = 42;
@@ -2767,6 +2767,242 @@ label: tst_usr_obj text: tst_usr_obj desc: from UserObjectWa... pos: [49.14]-[49
   check_completions(request_id, doc_uri, request_line, request_char, expect_count, expect_items);
 }
 
+TEST_F(MooseServerTest, ApplicationTypeUtilization)
+{
+  // didchange test parameters - update input to add Application block type
+  std::string doc_uri = wasp::lsp::m_uri_prefix + test_input_path;
+  int doc_version = 11;
+  std::string doc_text_change = R"INPUT(
+[Application]
+  type = OtherMooseUnitApp
+[]
+[Mesh]
+  type = GeneratedMesh
+  dim = 1
+[]
+[Distributions]
+  [from_specified_app]
+    type = AppTypeTestDistribution
+    mean = 1
+    shape = 1
+  []
+  [from_incorrect_app]
+    type = TestDistribution
+    mean = 2
+    shape = 2
+  []
+[]
+[Variables]
+  [u]
+  []
+[]
+[Kernels]
+  [diff]
+    type = Diffusion
+    variable = u
+  []
+[]
+[Executioner]
+  type = Transient
+[]
+[Problem]
+  solve = false
+[]
+)INPUT";
+
+  // diagnostic checking --------------------------------------------------
+
+  // build didchange notification from parameters and handle it with server
+  wasp::DataObject didchange_notification, diagnostics_notification;
+  std::stringstream errors;
+  EXPECT_TRUE(wasp::lsp::buildDidChangeNotification(
+      didchange_notification, errors, doc_uri, doc_version, -1, -1, -1, -1, -1, doc_text_change));
+  EXPECT_TRUE(errors.str().empty());
+  EXPECT_TRUE(
+      moose_server->handleDidChangeNotification(didchange_notification, diagnostics_notification));
+  EXPECT_TRUE(moose_server->getErrors().empty());
+
+  // dissect diagnostics notification from server and create formatted list
+  std::string response_uri;
+  wasp::DataArray diagnostics_array;
+  std::ostringstream diagnostics_list_actual;
+  EXPECT_TRUE(wasp::lsp::dissectPublishDiagnosticsNotification(
+      diagnostics_notification, errors, response_uri, diagnostics_array));
+  EXPECT_TRUE(errors.str().empty());
+  EXPECT_EQ(doc_uri, response_uri);
+  format_diagnostics(diagnostics_array, diagnostics_list_actual);
+
+  // check for diagnostic as OtherMooseUnitApp cannot have TestDistribution
+  std::size_t diagnostics_size_expect = 1;
+  std::string diagnostics_list_expect = R"INPUT(
+line:0 column:0 - A 'TestDistribution' is not a registered object.
+
+If you are trying to find this object in a dynamically loaded library, make sure that
+the library can be found either in your "Problem/library_path" parameter or in the
+MOOSE_LIBRARY_PATH environment variable.
+)INPUT";
+  EXPECT_EQ(diagnostics_size_expect, diagnostics_array.size());
+  EXPECT_EQ(diagnostics_list_expect, "\n" + diagnostics_list_actual.str());
+
+  // check server used Application block type value as type of app it built
+  EXPECT_EQ("OtherMooseUnitApp", moose_server->getCheckApp().type());
+  EXPECT_EQ("OtherMooseUnitApp", moose_server->getCheckApp().parser().getAppType());
+
+  // completion checking --------------------------------------------------
+
+  // check completion - Distribution block type choice in OtherMooseUnitApp
+  // AppTypeTestDistribution but not TestDistribution is registered for app
+  int request_id = 43;
+  int request_line = 10;
+  int request_char = 11;
+  std::size_t expect_count = 1;
+  std::string expect_items = R"INPUT(
+label: AppTypeTestDistribution text: AppTypeTestDistribution desc: Distribution regi... pos: [10.11]-[10.34] kind: 25 format: snippet
+)INPUT";
+  check_completions(request_id, doc_uri, request_line, request_char, expect_count, expect_items);
+
+  // check completion - Application block type selection of registered apps
+  // MooseUnitApp and OtherMooseUnitApp are two available Application types
+  request_id = 44;
+  request_line = 2;
+  request_char = 9;
+  expect_count = 2;
+  expect_items = R"INPUT(
+label: MooseUnitApp      text: MooseUnitApp      desc: Main MooseUnitApp... pos: [2.9]-[2.26] kind: 25 format: snippet
+label: OtherMooseUnitApp text: OtherMooseUnitApp desc: OtherMooseUnitApp... pos: [2.9]-[2.26] kind: 25 format: snippet
+)INPUT";
+  check_completions(request_id, doc_uri, request_line, request_char, expect_count, expect_items);
+
+  // hover text checking --------------------------------------------------
+
+  // check hover - on AppTypeTestDistribution type within OtherMooseUnitApp
+  request_id = 45;
+  request_line = 10;
+  request_char = 11;
+  std::string expect_text = "Distribution registered only to OtherMooseUnitApp.";
+  check_hover(request_id, doc_uri, request_line, request_char, expect_text);
+
+  // check hover - on OtherMooseUnitApp type value within Application block
+  request_id = 46;
+  request_line = 2;
+  request_char = 9;
+  expect_text = "OtherMooseUnitApp description for testing.";
+  check_hover(request_id, doc_uri, request_line, request_char, expect_text);
+
+  // definition checking --------------------------------------------------
+
+  // definition test parameters - on object type registered in current file
+  request_id = 47;
+  request_line = 10;
+  request_char = 11;
+
+  // build definition request out of test parameters and handle with server
+  wasp::DataObject definition_request, definition_response;
+  EXPECT_TRUE(wasp::lsp::buildDefinitionRequest(
+      definition_request, errors, request_id, doc_uri, request_line, request_char));
+  EXPECT_TRUE(errors.str().empty());
+  EXPECT_TRUE(moose_server->handleDefinitionRequest(definition_request, definition_response));
+  EXPECT_TRUE(moose_server->getErrors().empty());
+
+  // dissect definition response sent from server and create formatted list
+  int response_id;
+  wasp::DataArray definition_array;
+  std::ostringstream definition_list_actual;
+  EXPECT_TRUE(wasp::lsp::dissectLocationsResponse(
+      definition_response, errors, response_id, definition_array));
+  EXPECT_TRUE(errors.str().empty());
+  EXPECT_EQ(request_id, response_id);
+  format_locations(definition_array, definition_list_actual);
+
+  // check for location of AppTypeTestDistribution register in current file
+  std::size_t definition_size_expect = 1;
+  std::string definition_list_expect = R"INPUT(
+document_uri: "file://...absolute.../unit/src/MooseServerTest.C"    location_start: [90.0]    location_end: [90.1000]
+)INPUT";
+  EXPECT_EQ(definition_size_expect, definition_array.size());
+  EXPECT_EQ(definition_list_expect, "\n" + definition_list_actual.str());
+
+  // references checking --------------------------------------------------
+
+  // references test parameters - on subblock declarator of variable name u
+  request_id = 48;
+  request_line = 21;
+  request_char = 3;
+  bool incl_decl = true;
+
+  // build references request out of test parameters and handle with server
+  wasp::DataObject references_request, references_response;
+  EXPECT_TRUE(wasp::lsp::buildReferencesRequest(
+      references_request, errors, request_id, doc_uri, request_line, request_char, incl_decl));
+  EXPECT_TRUE(errors.str().empty());
+  EXPECT_TRUE(moose_server->handleReferencesRequest(references_request, references_response));
+  EXPECT_TRUE(moose_server->getErrors().empty());
+
+  // dissect references response sent from server and create formatted list
+  wasp::DataArray references_array;
+  std::ostringstream references_list_actual;
+  EXPECT_TRUE(wasp::lsp::dissectLocationsResponse(
+      references_response, errors, response_id, references_array));
+  EXPECT_TRUE(errors.str().empty());
+  EXPECT_EQ(request_id, response_id);
+  format_locations(references_array, references_list_actual);
+
+  // check for location of variable declaration and its kernel use in input
+  std::size_t references_size_expect = 2;
+  std::string references_list_expect = R"INPUT(
+document_uri: "file://...absolute.../unit/test.i"    location_start: [21.3]    location_end: [21.4]
+document_uri: "file://...absolute.../unit/test.i"    location_start: [27.15]    location_end: [27.16]
+)INPUT";
+  EXPECT_EQ(references_size_expect, references_array.size());
+  EXPECT_EQ(references_list_expect, "\n" + references_list_actual.str());
+
+  // change app in input --------------------------------------------------
+
+  // didchange test parameters - update input to check bad Application type
+  doc_version = 12;
+  doc_text_change = R"INPUT(
+[Application]
+  type = BadApp
+[]
+[Mesh]
+  type = GeneratedMesh
+  dim = 1
+[]
+[Executioner]
+  type = Transient
+[]
+[Problem]
+  solve = false
+[]
+)INPUT";
+
+  // diagnostic checking --------------------------------------------------
+
+  // build didchange notification from parameters and handle it with server
+  EXPECT_TRUE(wasp::lsp::buildDidChangeNotification(
+      didchange_notification, errors, doc_uri, doc_version, -1, -1, -1, -1, -1, doc_text_change));
+  EXPECT_TRUE(errors.str().empty());
+  EXPECT_TRUE(
+      moose_server->handleDidChangeNotification(didchange_notification, diagnostics_notification));
+  EXPECT_TRUE(moose_server->getErrors().empty());
+
+  // dissect diagnostics notification from server and create formatted list
+  diagnostics_list_actual.str("");
+  EXPECT_TRUE(wasp::lsp::dissectPublishDiagnosticsNotification(
+      diagnostics_notification, errors, response_uri, diagnostics_array));
+  EXPECT_TRUE(errors.str().empty());
+  EXPECT_EQ(doc_uri, response_uri);
+  format_diagnostics(diagnostics_array, diagnostics_list_actual);
+
+  // check for diagnostic as Application block type BadApp is not available
+  diagnostics_size_expect = 1;
+  diagnostics_list_expect = R"INPUT(
+line:2 column:9 - 'BadApp' is not a registered application type. Registered application types are [MooseUnitApp, OtherMooseUnitApp].
+)INPUT";
+  EXPECT_EQ(diagnostics_size_expect, diagnostics_array.size());
+  EXPECT_EQ(diagnostics_list_expect, "\n" + diagnostics_list_actual.str());
+}
+
 TEST_F(MooseServerTest, DocumentCloseShutdownAndExit)
 {
   // check moose_server can share connection it will use to read and write
@@ -2795,7 +3031,7 @@ TEST_F(MooseServerTest, DocumentCloseShutdownAndExit)
 
   // shutdown test parameter
 
-  int request_id = 43;
+  int request_id = 49;
 
   // build shutdown request with the test parameters
 

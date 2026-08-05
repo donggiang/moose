@@ -16,45 +16,45 @@
 /**
  * Class for the HypreAME eigensolver
  */
-class MFEMHypreAME : public MFEMEigensolverBase
+class MFEMHypreAME : public Moose::MFEM::EigensolverBase
 {
 public:
   static InputParameters validParams();
 
   MFEMHypreAME(const InputParameters & parameters);
 
-  /// Sets the operator for the eigensolver and propagates it to the preconditioner.
-  virtual void setOperator(mfem::OperatorHandle & op) override
-  {
-    if (_preconditioner)
-      _preconditioner->setOperator(op);
-    _eigensolver->SetOperator(*op.As<mfem::HypreParMatrix>());
-  }
-
   /// Sets the mass matrix for the eigensolver
-  virtual void setMassMatrix(mfem::OperatorHandle & mass) override
+  virtual void SetMassMatrix(mfem::Operator & mass) override
   {
-    _eigensolver->SetMassMatrix(*mass.As<mfem::HypreParMatrix>());
+    _eigensolver->SetMassMatrix(libMesh::cast_ref<mfem::HypreParMatrix &>(mass));
   }
 
   /// Solves the eigenvalue problem
-  virtual void solve() override { _eigensolver->Solve(); }
+  virtual void Solve() override { _eigensolver->Solve(); }
 
   /// Retrieves the computed eigenvalues
-  virtual void getEigenvalues(mfem::Array<mfem::real_t> & eigenvalues) const override
+  virtual void GetEigenvalues(mfem::Array<mfem::real_t> & eigenvalues) const override
   {
     _eigensolver->GetEigenvalues(eigenvalues);
   }
 
   /// Retrieves the computed eigenvector corresponding to the given index
-  virtual const mfem::HypreParVector & getEigenvector(int index) const override
+  virtual const mfem::HypreParVector & GetEigenvector(int index) const override
   {
     return _eigensolver->GetEigenvector(index);
   }
 
-protected:
   /// Override in derived classes to construct and set the solver options.
-  virtual void constructSolver() override;
+  virtual void ConstructSolver() override;
+
+protected:
+  /// Sets the operator for the eigensolver and propagates it to the preconditioner.
+  virtual void SetOperatorImpl(mfem::Operator & op) override
+  {
+    if (_preconditioner)
+      _preconditioner->SetOperator(op);
+    _eigensolver->SetOperator(libMesh::cast_ref<mfem::HypreParMatrix &>(op));
+  }
 
   /// Eigensolver to be used for the problem
   std::unique_ptr<mfem::HypreAME> _eigensolver;

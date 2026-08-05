@@ -20,28 +20,28 @@ void
 EigenproblemEquationSystem::ApplyEssentialBCs()
 {
   _ess_tdof_lists.resize(1);
+  _ess_markers.resize(1);
   mfem::ParGridFunction & trial_gf = *(_var_ess_constraints.at(0));
-  _global_ess_markers.SetSize(trial_gf.ParFESpace()->GetParMesh()->bdr_attributes.Max());
-  _global_ess_markers = 0;
   trial_gf.Update();
   trial_gf = _gfuncs->GetRef(_trial_var_names.at(0));
-  trial_gf.ParFESpace()->GetParMesh()->MarkExternalBoundaries(_global_ess_markers);
-  trial_gf.ParFESpace()->GetEssentialTrueDofs(_global_ess_markers, _ess_tdof_lists.at(0));
+  _ess_markers.at(0).SetSize(trial_gf.ParFESpace()->GetParMesh()->bdr_attributes.Max(), 0);
+  trial_gf.ParFESpace()->GetParMesh()->MarkExternalBoundaries(_ess_markers.at(0));
+  trial_gf.ParFESpace()->GetEssentialTrueDofs(_ess_markers.at(0), _ess_tdof_lists.at(0));
 }
 
 void
-EigenproblemEquationSystem::FormEigenproblemMatrix(mfem::OperatorHandle & op)
+EigenproblemEquationSystem::FormEigenproblemMatrix()
 {
   auto & test_var_name = _test_var_names.at(0);
   auto blf = _blfs.Get(test_var_name);
 
-  blf->EliminateEssentialBCDiag(_global_ess_markers, 1.0);
+  blf->EliminateEssentialBCDiag(_ess_markers.at(0), 1.0);
   blf->Finalize();
-  op.Reset(blf->ParallelAssemble());
+  _jacobian.Reset(blf->ParallelAssemble());
 }
 
 void
-EigenproblemEquationSystem::FormMassMatrix(mfem::OperatorHandle & op)
+EigenproblemEquationSystem::FormMassMatrix()
 {
   mfem::ConstantCoefficient one(1.0);
   mfem::ParFiniteElementSpace * fespace = _test_pfespaces.at(0);
@@ -56,14 +56,13 @@ EigenproblemEquationSystem::FormMassMatrix(mfem::OperatorHandle & op)
   // Shift the eigenvalue corresponding to eliminated dofs to a large value. The BC DoFs on the
   // stiffness matrix are set to 1 and the mass matrix BC DoFs are set to a small value eps, such
   // that the eigenvaluesd associate with these DOFs are ~1/eps.
-  m->EliminateEssentialBCDiag(_global_ess_markers, std::numeric_limits<mfem::real_t>::min());
+  m->EliminateEssentialBCDiag(_ess_markers.at(0), std::numeric_limits<mfem::real_t>::min());
   m->Finalize();
-  op.Reset(m->ParallelAssemble());
+  _mass_rhs.Reset(m->ParallelAssemble());
 }
 
 void
-EigenproblemEquationSystem::BuildEigenproblemJacobian(mfem::BlockVector & trueX,
-                                                      mfem::OperatorHandle & massRHS)
+EigenproblemEquationSystem::BuildEigenproblemJacobian(mfem::BlockVector & trueX)
 {
   mooseAssert(_test_var_names.size() == 1 && (_test_var_names.size() == _trial_var_names.size()) &&
                   (_test_var_names.at(0) == _trial_var_names.at(0)),
@@ -72,8 +71,15 @@ EigenproblemEquationSystem::BuildEigenproblemJacobian(mfem::BlockVector & trueX,
   height = trueX.Size();
   width = trueX.Size();
   ApplyEssentialBCs();
-  FormEigenproblemMatrix(_jacobian);
-  FormMassMatrix(massRHS);
+  FormEigenproblemMatrix();
+  FormMassMatrix();
+}
+
+void
+EigenproblemEquationSystem::PrepareEigensolver(EigensolverBase & solver)
+{
+  solver.SetMassMatrix(*_mass_rhs);
+  solver.SetOperator(*_jacobian);
 }
 
 } // namespace Moose::MFEM

@@ -11,24 +11,24 @@
 
 #pragma once
 
-#include "MFEMSolverBase.h"
+#include "MFEMLORLinearSolverBase.h"
 #include "MFEMFESpace.h"
 
 /**
  * Wrapper for mfem::HypreAMS solver.
  */
-class MFEMHypreAMS : public MFEMSolverBase
+class MFEMHypreAMS : public Moose::MFEM::LORLinearSolverBase<mfem::HypreAMS>
 {
 public:
   static InputParameters validParams();
 
   MFEMHypreAMS(const InputParameters &);
 
-  /// Updates the solver with the bilinear form in case LOR solve is required
-  void updateSolver(mfem::ParBilinearForm & a, mfem::Array<int> & tdofs) override;
-
 protected:
-  void constructSolver() override;
+  void ConstructSolver() override;
+
+  /// Update the wrapped MFEM solver parameters
+  virtual void SetSolverParameters(mfem::HypreAMS & solver) override;
 
 private:
   const MFEMFESpace & _mfem_fespace;

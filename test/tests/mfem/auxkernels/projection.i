@@ -1,7 +1,6 @@
 [Mesh]
   type = MFEMMesh
   file = ../mesh/hinomaru.e
-  dim = 2
 []
 
 [Problem]
@@ -97,16 +96,16 @@
   []
 []
 
-[Preconditioner]
+
+[Solvers]
   [boomeramg]
     type = MFEMHypreBoomerAMG
   []
-[]
-
-[Solver]
-  type = MFEMHyprePCG
-  preconditioner = boomeramg
-  l_tol = 1e-16
+  [main]
+    type = MFEMHyprePCG
+    preconditioner = boomeramg
+    l_tol = 1e-16
+  []
 []
 
 [Executioner]

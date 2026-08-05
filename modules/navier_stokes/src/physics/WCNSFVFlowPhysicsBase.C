@@ -335,7 +335,10 @@ WCNSFVFlowPhysicsBase::addPorousMediumSpeedMaterial()
 void
 WCNSFVFlowPhysicsBase::addNonPorousMediumSpeedMaterial()
 {
-  const std::string class_name = "ADVectorMagnitudeFunctorMaterial";
+  // Not very future-proof but it works
+  const bool use_ad = !dynamic_cast<WCNSLinearFVFlowPhysics *>(this);
+  const std::string class_name =
+      use_ad ? "ADVectorMagnitudeFunctorMaterial" : "VectorMagnitudeFunctorMaterial";
   InputParameters params = getFactory().getValidParams(class_name);
   assignBlocks(params, _blocks);
 
@@ -370,7 +373,7 @@ WCNSFVFlowPhysicsBase::addFluidPropertiesFunctorMaterial()
   }
   else
     // not implemented yet
-    paramWarning(
+    paramInfo(
         NS::fluid,
         "Specifying the fluid properties user object does not define the GeneralFunctorFluidProps "
         "when using the porous medium treatment. You have to define this object in the input");
