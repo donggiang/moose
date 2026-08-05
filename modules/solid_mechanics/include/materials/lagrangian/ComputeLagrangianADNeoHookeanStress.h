@@ -10,7 +10,7 @@
 
 #include "ComputeLagrangianStressPK2.h"
 
-/// Compressible Neo-Hookean hyperelasticity with a locally AD-computed material tangent
+/// Compressible Neo-Hookean hyperelasticity differentiated from a local strain-energy potential
 class ComputeLagrangianADNeoHookeanStress : public ComputeLagrangianStressPK2
 {
 public:
