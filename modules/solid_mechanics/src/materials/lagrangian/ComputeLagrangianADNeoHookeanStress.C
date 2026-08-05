@@ -42,7 +42,9 @@ ComputeLagrangianADNeoHookeanStress::ComputeLagrangianADNeoHookeanStress(
     const InputParameters & parameters)
   : ComputeLagrangianStressPK1(parameters),
     _ndisp(coupledComponents("displacements")),
+    _disp(coupledValues("displacements")),
     _grad_disp(coupledGradients("displacements")),
+    _coord_system(getBlockCoordSystem()),
     _stabilize_strain(getParam<bool>("stabilize_strain")),
     _lambda(getMaterialProperty<Real>(getParam<MaterialPropertyName>("lambda"))),
     _mu(getMaterialProperty<Real>(getParam<MaterialPropertyName>("mu")))
@@ -65,9 +67,16 @@ ComputeLagrangianADNeoHookeanStress::computeQpPK1Stress()
     {
       const auto component = i * RankTwoTensor::N + j;
       LocalHessianADReal Fij(0.0);
-      Fij.value().value() =
-          _stabilize_strain ? _F[_qp](i, j)
-                            : (i == j ? 1.0 : 0.0) + (i < _ndisp ? (*_grad_disp[i])[_qp](j) : 0.0);
+      if (_stabilize_strain)
+        Fij.value().value() = _F[_qp](i, j);
+      else
+      {
+        Fij.value().value() = i == j ? 1.0 : 0.0;
+        if (i < _ndisp)
+          Fij.value().value() += (*_grad_disp[i])[_qp](j);
+        if (_coord_system == Moose::COORD_RZ && i == 2 && j == 2)
+          Fij.value().value() += (*_disp[0])[_qp] / _q_point[_qp](0);
+      }
       Fij.value().derivatives()[component] = 1.0;
       Fij.derivatives()[component].value() = 1.0;
       F[component] = Fij;

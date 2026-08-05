@@ -21,7 +21,9 @@ protected:
   void computeQpPK1Stress() override;
 
   const unsigned int _ndisp;
+  const std::vector<const VariableValue *> _disp;
   const std::vector<const VariableGradient *> _grad_disp;
+  const Moose::CoordinateSystemType _coord_system;
   const bool _stabilize_strain;
   const MaterialProperty<Real> & _lambda;
   const MaterialProperty<Real> & _mu;

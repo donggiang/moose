@@ -57,6 +57,11 @@
     youngs_modulus = 1000.0
     poissons_ratio = 0.25
   []
+  [lame_parameters]
+    type = GenericConstantMaterial
+    prop_names = 'lambda mu'
+    prop_values = '400 400'
+  []
   [compute_stress]
     type = ComputeLagrangianLinearElasticStress
   []

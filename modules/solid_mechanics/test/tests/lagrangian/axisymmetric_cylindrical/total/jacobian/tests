@@ -37,6 +37,28 @@
     requirement = 'Jacobian is exact with relative tolerance of 1e-7 for large displacements, with '
                   'stabilization, and Dirichlet BCs in 2D axisymmetric RZ coordinates'
   []
+  [dirichlet_large_local_ad_unstabilized]
+    type = PetscJacobianTester
+    input = 'dirichlet.i'
+    ratio_tol = 1E-7
+    difference_tol = 1E10
+    cli_args = "GlobalParams/large_kinematics=true GlobalParams/stabilize_strain=false "
+               "Materials/compute_stress/type=ComputeLagrangianADNeoHookeanStress"
+    requirement = 'The local-AD Neo-Hookean material provides an exact Jacobian without '
+                  'stabilization in 2D axisymmetric RZ coordinates.'
+    design = 'source/materials/lagrangian/ComputeLagrangianADNeoHookeanStress.md'
+  []
+  [dirichlet_large_local_ad_stabilized]
+    type = PetscJacobianTester
+    input = 'dirichlet.i'
+    ratio_tol = 1E-7
+    difference_tol = 1E10
+    cli_args = "GlobalParams/large_kinematics=true GlobalParams/stabilize_strain=true "
+               "Materials/compute_stress/type=ComputeLagrangianADNeoHookeanStress"
+    requirement = 'The local-AD Neo-Hookean material provides an exact F-bar Jacobian in 2D '
+                  'axisymmetric RZ coordinates.'
+    design = 'source/materials/lagrangian/ComputeLagrangianADNeoHookeanStress.md'
+  []
   [neumann_small_unstabilized]
     type = PetscJacobianTester
     input = 'neumann.i'
