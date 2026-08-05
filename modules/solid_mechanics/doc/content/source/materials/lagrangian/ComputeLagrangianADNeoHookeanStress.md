@@ -57,6 +57,13 @@ and
 These are assembled by `TotalLagrangianStressDivergence`; this material does not replace that
 non-AD kernel.
 
+When `stabilize_strain=true`, the energy and its local derivatives are evaluated at the F-bar
+deformation gradient supplied by `ComputeLagrangianStrain`. The non-AD kernel retains the standard
+residual gradient but applies the complete derivative of F-bar to the trial gradient. This produces
+both the conventional tangent and the additional F-bar term from the linearization of the stress
+response. The `stabilize_strain` setting must therefore agree for the strain material, stress
+material, and kernel.
+
 !alert note
 This material supports large kinematics only.
 

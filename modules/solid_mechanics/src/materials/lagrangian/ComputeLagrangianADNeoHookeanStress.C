@@ -28,8 +28,10 @@ ComputeLagrangianADNeoHookeanStress::validParams()
   InputParameters params = ComputeLagrangianStressPK1::validParams();
   params.addClassDescription(
       "Compute a compressible Neo-Hookean PK1 stress and tangent by locally differentiating the "
-      "strain-energy potential with respect to the displacement gradient.");
+      "strain-energy potential with respect to the deformation measure derived from the "
+      "displacement gradient.");
   params.addRequiredCoupledVar("displacements", "Displacement variables for the problem.");
+  params.addParam<bool>("stabilize_strain", false, "Use the F-bar deformation gradient.");
   params.addParam<MaterialPropertyName>(
       "lambda", "lambda", "First Lame parameter material property.");
   params.addParam<MaterialPropertyName>("mu", "mu", "Shear modulus material property.");
@@ -41,6 +43,7 @@ ComputeLagrangianADNeoHookeanStress::ComputeLagrangianADNeoHookeanStress(
   : ComputeLagrangianStressPK1(parameters),
     _ndisp(coupledComponents("displacements")),
     _grad_disp(coupledGradients("displacements")),
+    _stabilize_strain(getParam<bool>("stabilize_strain")),
     _lambda(getMaterialProperty<Real>(getParam<MaterialPropertyName>("lambda"))),
     _mu(getMaterialProperty<Real>(getParam<MaterialPropertyName>("mu")))
 {
@@ -54,18 +57,20 @@ ComputeLagrangianADNeoHookeanStress::ComputeLagrangianADNeoHookeanStress(
 void
 ComputeLagrangianADNeoHookeanStress::computeQpPK1Stress()
 {
-  // Seed the displacement gradient, then retain its derivatives while constructing F. The
-  // non-AD kernel supplies the remaining nodal chain rule through the trial-function gradient.
+  // Seed the deformation measure passed to the constitutive model. With F-bar stabilization the
+  // non-AD kernel supplies the complete derivative of F-bar with respect to the nodal variables.
   std::array<LocalHessianADReal, RankTwoTensor::N2> F;
   for (const auto i : make_range(RankTwoTensor::N))
     for (const auto j : make_range(RankTwoTensor::N))
     {
       const auto component = i * RankTwoTensor::N + j;
-      LocalHessianADReal grad_u_ij(0.0);
-      grad_u_ij.value().value() = i < _ndisp ? (*_grad_disp[i])[_qp](j) : 0.0;
-      grad_u_ij.value().derivatives()[component] = 1.0;
-      grad_u_ij.derivatives()[component].value() = 1.0;
-      F[component] = grad_u_ij + (i == j ? 1.0 : 0.0);
+      LocalHessianADReal Fij(0.0);
+      Fij.value().value() =
+          _stabilize_strain ? _F[_qp](i, j)
+                            : (i == j ? 1.0 : 0.0) + (i < _ndisp ? (*_grad_disp[i])[_qp](j) : 0.0);
+      Fij.value().derivatives()[component] = 1.0;
+      Fij.derivatives()[component].value() = 1.0;
+      F[component] = Fij;
     }
 
   std::array<LocalHessianADReal, RankTwoTensor::N2> C;

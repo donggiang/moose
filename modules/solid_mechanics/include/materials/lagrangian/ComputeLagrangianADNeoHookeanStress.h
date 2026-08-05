@@ -22,6 +22,7 @@ protected:
 
   const unsigned int _ndisp;
   const std::vector<const VariableGradient *> _grad_disp;
+  const bool _stabilize_strain;
   const MaterialProperty<Real> & _lambda;
   const MaterialProperty<Real> & _mu;
 };

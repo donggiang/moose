@@ -56,6 +56,18 @@
                   'a Jacobian with relative error less than 1e-6 to the non-AD total Lagrangian '
                   'kernel.'
   []
+  [local_ad_neohookean_fbar]
+    type = PetscJacobianTester
+    input = 'neohookean.i'
+    cli_args = 'GlobalParams/large_kinematics=true GlobalParams/stabilize_strain=true '
+               'Materials/compute_stress/type=ComputeLagrangianADNeoHookeanStress'
+    ratio_tol = 1E-6
+    difference_tol = 1E10
+    design = 'source/materials/lagrangian/ComputeLagrangianADNeoHookeanStress.md'
+    requirement = 'The locally differentiated Neo-Hookean material shall provide the complete '
+                  'F-bar Jacobian, including the derivative of the modified deformation gradient, '
+                  'with relative error less than 1e-6.'
+  []
   [neohookean_small]
     type = PetscJacobianTester
     input = 'neohookean.i'
