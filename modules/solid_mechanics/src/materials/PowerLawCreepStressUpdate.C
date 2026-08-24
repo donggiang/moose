@@ -9,6 +9,9 @@
 
 #include "PowerLawCreepStressUpdate.h"
 
+#include "MathUtils.h"
+#include "MooseUtils.h"
+
 registerMooseObject("SolidMechanicsApp", PowerLawCreepStressUpdate);
 registerMooseObject("SolidMechanicsApp", ADPowerLawCreepStressUpdate);
 
@@ -69,6 +72,26 @@ PowerLawCreepStressUpdateTempl<is_ad>::computeStressInitialize(
     _exponential = exp(-_activation_energy / (_gas_constant * (*_temperature)[_qp]));
 
   _exp_time = pow(_t - _start_time, _m_exponent);
+}
+
+template <bool is_ad>
+GenericReal<is_ad>
+PowerLawCreepStressUpdateTempl<is_ad>::initialGuess(
+    const GenericReal<is_ad> & effective_trial_stress)
+{
+  // An AD initial guess can be accepted before a Newton update establishes the derivative of the
+  // converged constitutive response, so retain the established zero guess for AD solves.
+  if constexpr (is_ad)
+    return 0.0;
+
+  if (MooseUtils::absoluteFuzzyEqual(this->_effective_old_stress, 0.0))
+    return 0.0;
+
+  const GenericReal<is_ad> initial_guess =
+      (effective_trial_stress - this->_effective_old_stress) / this->_three_shear_modulus;
+  return MathUtils::clamp(initial_guess,
+                          this->minimumPermissibleValue(effective_trial_stress),
+                          this->maximumPermissibleValue(effective_trial_stress));
 }
 
 template <bool is_ad>

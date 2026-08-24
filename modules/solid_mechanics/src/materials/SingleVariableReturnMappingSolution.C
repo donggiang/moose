@@ -100,8 +100,7 @@ void
 SingleVariableReturnMappingSolutionTempl<is_ad>::returnMappingSolve(
     const GenericReal<is_ad> & effective_trial_stress,
     GenericReal<is_ad> & scalar,
-    const ConsoleStream & console,
-    GenericReal<is_ad> initial_guess)
+    const ConsoleStream & console)
 {
   // construct the stringstream here only if the debug level is set to ALL
   std::unique_ptr<std::stringstream> iter_output =
@@ -114,8 +113,7 @@ SingleVariableReturnMappingSolutionTempl<is_ad>::returnMappingSolve(
   auto solve_state =
       internalSolve(effective_trial_stress,
                     scalar,
-                    _internal_solve_full_iteration_history ? iter_output.get() : nullptr,
-                    initial_guess);
+                    _internal_solve_full_iteration_history ? iter_output.get() : nullptr);
   if (solve_state != SolveState::SUCCESS &&
       _internal_solve_output_on != InternalSolveOutput::ALWAYS)
   {
@@ -145,7 +143,7 @@ SingleVariableReturnMappingSolutionTempl<is_ad>::returnMappingSolve(
     // if full history output is only requested for failed solves we have to repeat
     // the solve a second time
     if (_internal_solve_full_iteration_history)
-      internalSolve(effective_trial_stress, scalar, iter_output.get(), initial_guess);
+      internalSolve(effective_trial_stress, scalar, iter_output.get());
 
     // Append summary and throw exception
     outputIterationSummary(iter_output.get(), _iteration);
@@ -165,11 +163,9 @@ typename SingleVariableReturnMappingSolutionTempl<is_ad>::SolveState
 SingleVariableReturnMappingSolutionTempl<is_ad>::internalSolve(
     const GenericReal<is_ad> effective_trial_stress,
     GenericReal<is_ad> & scalar,
-    std::stringstream * iter_output,
-    GenericReal<is_ad> initial_guess)
+    std::stringstream * iter_output)
 {
-  // scalar = initialGuess(effective_trial_stress);
-  scalar = initial_guess;
+  scalar = initialGuess(effective_trial_stress);
   GenericReal<is_ad> scalar_old = scalar;
   GenericReal<is_ad> scalar_increment = 0.0;
   const GenericReal<is_ad> min_permissible_scalar = minimumPermissibleValue(effective_trial_stress);

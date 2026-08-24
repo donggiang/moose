@@ -122,6 +122,7 @@
   [stress]
     type = ComputeMultipleInelasticStress
     inelastic_models = rom_stress_prediction
+
   []
   [mx_phase_fraction]
     type = GenericConstantMaterial
@@ -139,7 +140,8 @@
 
     use_substepping = ERROR_BASED
     substep_strain_tolerance = 1.0e-5
-    internal_solve_output_on = always
+    absolute_tolerance = 1e-16
+    relative_tolerance = 1e-16
 
     stress_input_window_low_failure = WARN
     stress_input_window_high_failure = ERROR
@@ -151,9 +153,6 @@
     temperature_input_window_low_failure = ERROR
     environment_input_window_high_failure = ERROR
     environment_input_window_low_failure = ERROR
-
-    absolute_tolerance = 1e-20
-    relative_tolerance = 1e-20
   []
 []
 
@@ -178,6 +177,7 @@
     time_t = '100800'
     time_dt = '1e5'
   []
+
 []
 
 [Postprocessors]

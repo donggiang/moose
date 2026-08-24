@@ -12,6 +12,7 @@
 
 #include "MooseMesh.h"
 #include "ElasticityTensorTools.h"
+#include "RankTwoScalarTools.h"
 
 template <bool is_ad>
 InputParameters
@@ -239,7 +240,7 @@ RadialReturnStressUpdateTempl<is_ad>::updateState(
     GenericRankTwoTensor<is_ad> & inelastic_strain_increment,
     const GenericRankTwoTensor<is_ad> & /*rotation_increment*/,
     GenericRankTwoTensor<is_ad> & stress_new,
-    [[maybe_unused]] const RankTwoTensor & stress_old,
+    const RankTwoTensor & stress_old,
     const GenericRankFourTensor<is_ad> & elasticity_tensor,
     const RankTwoTensor & elastic_strain_old,
     bool compute_full_tangent_operator,
@@ -260,20 +261,18 @@ RadialReturnStressUpdateTempl<is_ad>::updateState(
 
   computeStressInitialize(effective_trial_stress, elasticity_tensor);
 
+  _effective_old_stress = RankTwoScalarTools::vonMisesStress(stress_old);
+
   mooseAssert(
       _three_shear_modulus != 0.0,
       "Shear modulus is zero. Ensure that the base class computeStressInitialize() is called.");
-
-  auto initial_guess = GenericReal<is_ad>(0.0);
 
   // Use Newton iteration to determine the scalar effective inelastic strain increment
   _effective_inelastic_strain_increment = 0.0;
   if (!MooseUtils::absoluteFuzzyEqual(effective_trial_stress, 0.0))
   {
-    this->returnMappingSolve(effective_trial_stress,
-                             _effective_inelastic_strain_increment,
-                             this->_console,
-                             initial_guess);
+    this->returnMappingSolve(
+        effective_trial_stress, _effective_inelastic_strain_increment, this->_console);
     if (_effective_inelastic_strain_increment != 0.0)
       inelastic_strain_increment =
           deviatoric_trial_stress *
@@ -385,7 +384,7 @@ RadialReturnStressUpdateTempl<is_ad>::updateStateSubstepInternal(
                 sub_inelastic_strain_increment,
                 rotation_increment, // not used in updateState
                 sub_stress_new,
-                stress_old, // not used in updateState
+                stress_old,
                 elasticity_tensor,
                 elastic_strain_old,
                 false);

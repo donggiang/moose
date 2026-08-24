@@ -38,8 +38,7 @@ protected:
    */
   void returnMappingSolve(const GenericReal<is_ad> & effective_trial_stress,
                           GenericReal<is_ad> & scalar,
-                          const ConsoleStream & console,
-                          GenericReal<is_ad> initial_guess = GenericReal<is_ad>(0.0));
+                          const ConsoleStream & console);
 
   /**
    * Compute the minimum permissible value of the scalar.  For some models, the magnitude
@@ -234,8 +233,7 @@ private:
    */
   SolveState internalSolve(const GenericReal<is_ad> effective_trial_stress,
                            GenericReal<is_ad> & scalar,
-                           std::stringstream * iter_output = nullptr,
-                           GenericReal<is_ad> initial_guess = GenericReal<is_ad>(0.0));
+                           std::stringstream * iter_output = nullptr);
 
   /**
    * Check to see whether the residual is within acceptable convergence limits.

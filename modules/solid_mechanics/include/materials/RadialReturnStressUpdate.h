@@ -216,6 +216,9 @@ protected:
   /// 3 * shear modulus
   GenericReal<is_ad> _three_shear_modulus;
 
+  /// Effective stress at the beginning of the current return-mapping solve
+  Real _effective_old_stress;
+
   GenericMaterialProperty<Real, is_ad> & _effective_inelastic_strain;
   const MaterialProperty<Real> & _effective_inelastic_strain_old;
 
