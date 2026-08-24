@@ -46,7 +46,9 @@ PowerLawCreepStressUpdateTempl<is_ad>::PowerLawCreepStressUpdateTempl(
     _activation_energy(this->template getParam<Real>("activation_energy")),
     _gas_constant(this->template getParam<Real>("gas_constant")),
     _start_time(this->template getParam<Real>("start_time")),
-    _exponential(1.0)
+    _exponential(1.0),
+    _local_iterations(
+        this->template declareProperty<Real>(this->_base_name + "radial_return_local_iterations"))
 {
   if (_start_time < this->_app.getStartTime() && (std::trunc(_m_exponent) != _m_exponent))
     this->paramError("start_time",
@@ -119,6 +121,15 @@ PowerLawCreepStressUpdateTempl<is_ad>::computeStressFinalize(
     const GenericRankTwoTensor<is_ad> & plastic_strain_increment)
 {
   _creep_strain[_qp] += plastic_strain_increment;
+}
+
+template <bool is_ad>
+void
+PowerLawCreepStressUpdateTempl<is_ad>::outputIterationSummary(std::stringstream * iter_output,
+                                                              const unsigned int total_it)
+{
+  _local_iterations[_qp] = total_it;
+  RadialReturnStressUpdateTempl<is_ad>::outputIterationSummary(iter_output, total_it);
 }
 
 template <bool is_ad>

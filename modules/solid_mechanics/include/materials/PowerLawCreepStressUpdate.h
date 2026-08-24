@@ -50,6 +50,9 @@ public:
   virtual void
   computeStressFinalize(const GenericRankTwoTensor<is_ad> & plastic_strain_increment) override;
 
+  void outputIterationSummary(std::stringstream * iter_output,
+                              const unsigned int total_it) override;
+
 protected:
   virtual GenericChainedReal<is_ad>
   computeResidualAndDerivative(const GenericReal<is_ad> & effective_trial_stress,
@@ -84,6 +87,9 @@ protected:
 
   /// Exponential calculated from current time
   Real _exp_time;
+
+  /// Local return-mapping iterations for the current constitutive update
+  MaterialProperty<Real> & _local_iterations;
 
   usingTransientInterfaceMembers;
   using RadialReturnCreepStressUpdateBaseTempl<is_ad>::_qp;
