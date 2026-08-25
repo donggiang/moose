@@ -105,8 +105,11 @@
   type = Transient
   solve_type = NEWTON
   petsc_options = '-snes_ksp_ew'
-  petsc_options_iname = '-pc_type -pc_factor_mat_solver_package'
-  petsc_options_value = ' lu       mumps'
+  # icntl_24=1 enables MUMPS null-pivot detection: the shell stiffness matrix has a
+  # decoupled (zero-stiffness) DOF that older MUMPS pivoted through implicitly but newer
+  # MUMPS flags as FACTOR_NUMERIC_ZEROPIVOT; detection reproduces the same solution.
+  petsc_options_iname = '-pc_type -pc_factor_mat_solver_package -mat_mumps_icntl_24'
+  petsc_options_value = ' lu       mumps                        1'
   line_search = 'none'
   nl_rel_tol = 1e-10
   nl_abs_tol = 1e-10
