@@ -33,6 +33,15 @@ PowerLawCreepStressUpdateTempl<is_ad>::validParams()
   params.addRequiredParam<Real>("activation_energy", "Activation energy");
   params.addParam<Real>("gas_constant", 8.3143, "Universal gas constant");
   params.addParam<Real>("start_time", 0.0, "Start time (if not zero)");
+  MooseEnum initial_guess_type("ZERO WEN OLD_STRESS", "WEN");
+  params.addParam<MooseEnum>(
+      "initial_guess_type",
+      initial_guess_type,
+      "Initial guess for the non-AD scalar return-mapping solve. ZERO starts from a zero "
+      "effective creep strain increment; WEN (the default) estimates the increment from the "
+      "difference between the trial and old von Mises stresses; OLD_STRESS evaluates the "
+      "power-law creep increment "
+      "using the old von Mises stress. AD solves retain the zero initial guess.");
   return params;
 }
 
@@ -40,6 +49,8 @@ template <bool is_ad>
 PowerLawCreepStressUpdateTempl<is_ad>::PowerLawCreepStressUpdateTempl(
     const InputParameters & parameters)
   : RadialReturnCreepStressUpdateBaseTempl<is_ad>(parameters),
+    _initial_guess_type(
+        parameters.get<MooseEnum>("initial_guess_type").template getEnum<InitialGuessType>()),
     _temperature(this->isParamValid("temperature")
                      ? &this->template coupledGenericValue<is_ad>("temperature")
                      : nullptr),
@@ -84,11 +95,21 @@ PowerLawCreepStressUpdateTempl<is_ad>::initialGuess(
   if constexpr (is_ad)
     return 0.0;
 
-  if (MooseUtils::absoluteFuzzyEqual(this->_effective_old_stress, 0.0))
+  if (_initial_guess_type == InitialGuessType::ZERO ||
+      MooseUtils::absoluteFuzzyEqual(this->_effective_old_stress, 0.0))
     return 0.0;
 
-  const GenericReal<is_ad> initial_guess =
-      (effective_trial_stress - this->_effective_old_stress) / this->_three_shear_modulus;
+  GenericReal<is_ad> initial_guess;
+  if (_initial_guess_type == InitialGuessType::WEN)
+    initial_guess =
+        (effective_trial_stress - this->_effective_old_stress) / this->_three_shear_modulus;
+  else
+  {
+    using std::pow;
+    initial_guess = _dt * _coefficient * pow(this->_effective_old_stress, _n_exponent) *
+                    _exponential * _exp_time;
+  }
+
   return MathUtils::clamp(initial_guess,
                           this->minimumPermissibleValue(effective_trial_stress),
                           this->maximumPermissibleValue(effective_trial_stress));

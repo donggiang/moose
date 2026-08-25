@@ -51,6 +51,13 @@ public:
   computeStressFinalize(const GenericRankTwoTensor<is_ad> & plastic_strain_increment) override;
 
 protected:
+  enum class InitialGuessType
+  {
+    ZERO,
+    WEN,
+    OLD_STRESS
+  };
+
   virtual GenericReal<is_ad>
   initialGuess(const GenericReal<is_ad> & effective_trial_stress) override;
 
@@ -60,6 +67,9 @@ protected:
   {
     return computeResidualInternal<GenericChainedReal<is_ad>>(effective_trial_stress, scalar);
   }
+
+  /// Method used to initialize the non-AD scalar return-mapping solve
+  const InitialGuessType _initial_guess_type;
 
   /// Temperature variable value
   const GenericVariableValue<is_ad> * const _temperature;

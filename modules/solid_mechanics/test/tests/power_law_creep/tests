@@ -51,6 +51,18 @@
       exodiff = 'power_law_creep_out.e'
       detail = 'that works with a finite strain formulation.'
     []
+    [wen_initial_guess]
+      type = 'RunApp'
+      input = 'power_law_creep.i'
+      cli_args = 'Materials/power_law_creep/initial_guess_type=WEN Outputs/exodus=false'
+      detail = 'that supports an initial guess based on the trial and old von Mises stresses.'
+    []
+    [old_stress_initial_guess]
+      type = 'RunApp'
+      input = 'power_law_creep.i'
+      cli_args = 'Materials/power_law_creep/initial_guess_type=OLD_STRESS Outputs/exodus=false'
+      detail = 'that supports evaluating the initial creep increment at the old von Mises stress.'
+    []
     [cp_power_law_creep]
       type = 'Exodiff'
       input = 'cp_power_law_creep.i'
