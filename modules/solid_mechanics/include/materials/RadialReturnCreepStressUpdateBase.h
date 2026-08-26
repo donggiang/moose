@@ -9,14 +9,15 @@
 
 #pragma once
 
-#include "RadialReturnStressUpdate.h"
+#include "RadialReturnRateDependentStressUpdate.h"
 
 /**
  * This class provides baseline functionallity for creep models based on the stress update material
  * in a radial return isotropic creep calculations.
  */
 template <bool is_ad>
-class RadialReturnCreepStressUpdateBaseTempl : public RadialReturnStressUpdateTempl<is_ad>
+class RadialReturnCreepStressUpdateBaseTempl
+  : public RadialReturnRateDependentStressUpdateTempl<is_ad>
 {
 public:
   static InputParameters validParams();

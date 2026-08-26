@@ -240,6 +240,9 @@
     m_exponent = 0.0
     activation_energy = 0.0
     max_inelastic_increment = 0.01
+    # Resolve the local return-map accurately enough for the material timestep limiter.
+    absolute_tolerance = 1e-14
+    relative_tolerance = 1e-14
   [../]
 []
 

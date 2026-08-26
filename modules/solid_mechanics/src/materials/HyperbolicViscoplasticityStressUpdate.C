@@ -17,7 +17,7 @@ registerMooseObject("SolidMechanicsApp", HyperbolicViscoplasticityStressUpdate);
 InputParameters
 HyperbolicViscoplasticityStressUpdate::validParams()
 {
-  InputParameters params = RadialReturnStressUpdate::validParams();
+  InputParameters params = RadialReturnRateDependentStressUpdate::validParams();
   params.addClassDescription("This class uses the discrete material for a hyperbolic sine "
                              "viscoplasticity model in which the effective plastic strain is "
                              "solved for using a creep approach.");
@@ -38,13 +38,12 @@ HyperbolicViscoplasticityStressUpdate::validParams()
       "String that is prepended to the plastic_strain Material Property",
       "This has been replaced by the 'base_name' parameter");
   params.set<std::string>("effective_inelastic_strain_name") = "effective_plastic_strain";
-
   return params;
 }
 
 HyperbolicViscoplasticityStressUpdate::HyperbolicViscoplasticityStressUpdate(
     const InputParameters & parameters)
-  : RadialReturnStressUpdate(parameters),
+  : RadialReturnRateDependentStressUpdate(parameters),
     _plastic_prepend(getParam<std::string>("plastic_prepend")),
     _yield_stress(parameters.get<Real>("yield_stress")),
     _hardening_constant(parameters.get<Real>("hardening_constant")),
@@ -59,6 +58,17 @@ HyperbolicViscoplasticityStressUpdate::HyperbolicViscoplasticityStressUpdate(
     _plastic_strain_old(
         getMaterialPropertyOld<RankTwoTensor>(_base_name + _plastic_prepend + "plastic_strain"))
 {
+}
+
+Real
+HyperbolicViscoplasticityStressUpdate::oldStressInitialGuess(
+    const Real & /*effective_trial_stress*/, const Real & /*wen_guess*/)
+{
+  const Real old_yield_condition =
+      _effective_old_stress - _hardening_variable_old[_qp] - _yield_stress;
+  return old_yield_condition > 0.0
+             ? _dt * _c_alpha * std::sinh(_c_beta * old_yield_condition)
+             : 0.0;
 }
 
 void

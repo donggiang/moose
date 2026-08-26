@@ -61,6 +61,22 @@
                   'time-dependent linear strain hardening plasticity model in a small incremental '
                   'strain formulation in a manner equivalent to the ABAQUS result.'
   []
+  [uniaxial_viscoplasticity_wen_initial_guess]
+    type = RunApp
+    input = 'uniaxial_viscoplasticity_incrementalstrain.i'
+    cli_args = 'Materials/viscoplasticity/initial_guess_type=WEN Outputs/exodus=false'
+    design = 'HyperbolicViscoplasticityStressUpdate.md'
+    requirement = 'The system shall initialize a scalar hyperbolic viscoplasticity solve using '
+                  'the difference between the trial and old von Mises stresses.'
+  []
+  [uniaxial_viscoplasticity_old_stress_initial_guess]
+    type = RunApp
+    input = 'uniaxial_viscoplasticity_incrementalstrain.i'
+    cli_args = 'Materials/viscoplasticity/initial_guess_type=OLD_STRESS Outputs/exodus=false'
+    design = 'HyperbolicViscoplasticityStressUpdate.md'
+    requirement = 'The system shall initialize a scalar hyperbolic viscoplasticity solve using '
+                  'the viscoplastic rate evaluated at the old stress and internal state.'
+  []
 
   [isotropic_plasticity_error1]
     type = 'RunException'

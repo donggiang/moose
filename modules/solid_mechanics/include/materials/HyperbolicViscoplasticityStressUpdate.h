@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "RadialReturnStressUpdate.h"
+#include "RadialReturnRateDependentStressUpdate.h"
 
 /**
  * This class uses the Discrete material in an isotropic radial return hyperbolic
@@ -25,7 +25,7 @@
  * Petrinic's Introduction to Computational Plasticity (2004) Oxford University
  * Press, pg. 162 - 163.
  */
-class HyperbolicViscoplasticityStressUpdate : public RadialReturnStressUpdate
+class HyperbolicViscoplasticityStressUpdate : public RadialReturnRateDependentStressUpdate
 {
 public:
   static InputParameters validParams();
@@ -35,6 +35,9 @@ public:
 protected:
   virtual void initQpStatefulProperties() override;
   virtual void propagateQpStatefulProperties() override;
+
+  virtual Real oldStressInitialGuess(const Real & effective_trial_stress,
+                                     const Real & wen_guess) override;
 
   virtual void computeStressInitialize(const Real & effective_trial_stress,
                                        const RankFourTensor & elasticity_tensor) override;

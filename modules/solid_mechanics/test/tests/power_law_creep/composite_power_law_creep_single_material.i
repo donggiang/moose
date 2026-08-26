@@ -164,6 +164,9 @@
     activation_energy = '3.0e5 3.0e5'
     switching_functions = 'h1 h2'
     temperature = temp
+    # Resolve the local return map consistently when starting from the old-stress estimate.
+    absolute_tolerance = 1e-14
+    relative_tolerance = 1e-14
   []
 []
 

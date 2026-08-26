@@ -13,7 +13,7 @@ template <bool is_ad>
 InputParameters
 RadialReturnCreepStressUpdateBaseTempl<is_ad>::validParams()
 {
-  InputParameters params = RadialReturnStressUpdateTempl<is_ad>::validParams();
+  InputParameters params = RadialReturnRateDependentStressUpdateTempl<is_ad>::validParams();
   params.set<std::string>("effective_inelastic_strain_name") = "effective_creep_strain";
   return params;
 }
@@ -21,7 +21,7 @@ RadialReturnCreepStressUpdateBaseTempl<is_ad>::validParams()
 template <bool is_ad>
 RadialReturnCreepStressUpdateBaseTempl<is_ad>::RadialReturnCreepStressUpdateBaseTempl(
     const InputParameters & parameters)
-  : RadialReturnStressUpdateTempl<is_ad>(parameters),
+  : RadialReturnRateDependentStressUpdateTempl<is_ad>(parameters),
     _creep_strain(this->template declareGenericProperty<RankTwoTensor, is_ad>(this->_base_name +
                                                                               "creep_strain")),
     _creep_strain_old(

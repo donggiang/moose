@@ -68,7 +68,13 @@
     run_sim = 'True'
     ratio_tol = 5e-6
     difference_tol = 2e-2
-    cli_args = 'Materials/elastic_strain/inelastic_models="creep_nine creep_one" Outputs/csv=false -snes_test_err 1e-9 -mat_fd_type ds'
+    # The old-stress guess can satisfy the value tolerance before its AD derivatives fully converge.
+    cli_args = 'Materials/elastic_strain/inelastic_models="creep_nine creep_one"
+                Materials/creep_nine/absolute_tolerance=1e-14
+                Materials/creep_nine/relative_tolerance=1e-14
+                Materials/creep_one/absolute_tolerance=1e-14
+                Materials/creep_one/relative_tolerance=1e-14
+                Outputs/csv=false -snes_test_err 1e-9 -mat_fd_type ds'
     requirement = "The AD multiple inelastic stress calculator shall provide a correct jacobian for the linear combination of two power law creep models"
     design = 'ADComputeMultipleInelasticStress.md'
     valgrind = 'none' # too slow especially after #14547
