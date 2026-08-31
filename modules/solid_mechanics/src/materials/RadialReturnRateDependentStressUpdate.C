@@ -16,7 +16,7 @@ InputParameters
 RadialReturnRateDependentStressUpdateTempl<is_ad>::validParams()
 {
   InputParameters params = RadialReturnStressUpdateTempl<is_ad>::validParams();
-  MooseEnum initial_guess_type("ZERO WEN OLD_STRESS", "OLD_STRESS");
+  MooseEnum initial_guess_type("ZERO WEN OLD_STRESS", "ZERO");
   params.addParam<MooseEnum>(
       "initial_guess_type",
       initial_guess_type,
